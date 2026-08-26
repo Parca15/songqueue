@@ -23,6 +23,10 @@ from src.routers.websocket import manager as ws_manager
 
 router = APIRouter()
 
+# Guard anti-duplicado para auto-skip: evita que llamadas concurrentes/duplicadas
+# de varios reproductores consuman varias canciones de la cola a la vez.
+_auto_skip_in_flight: set[int] = set()
+
 
 def _queue_item_to_dict(item: QueueItem) -> dict:
     song_dict = None
@@ -306,20 +310,30 @@ async def auto_skip_item(
     venue_id: int,
     db: AsyncSession = Depends(get_db),
 ) -> dict | None:
-    """Auto-skip cuando termina una cancion. No requiere autenticacion."""
-    next_item = await skip_current(db, venue_id)
-    if next_item:
-        result = await db.execute(
-            select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == next_item.id)
-        )
-        next_item = result.scalar_one()
+    """Auto-skip cuando termina una cancion. No requiere autenticacion.
 
-    await _broadcast_queue_update(db, venue_id)
+    Protegido contra llamadas duplicadas/concurrentes: si ya hay un auto-skip
+    en curso para el local, se ignora para no saltar varias canciones a la vez.
+    """
+    if venue_id in _auto_skip_in_flight:
+        return None
+    _auto_skip_in_flight.add(venue_id)
+    try:
+        next_item = await skip_current(db, venue_id)
+        if next_item:
+            result = await db.execute(
+                select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == next_item.id)
+            )
+            next_item = result.scalar_one()
 
-    if next_item:
-        await ws_manager.send_to_player(venue_id, {
-            "type": "play_song",
-            "data": _queue_item_to_dict(next_item),
-        })
+        await _broadcast_queue_update(db, venue_id)
 
-    return _queue_item_to_dict(next_item) if next_item else None
+        if next_item:
+            await ws_manager.send_to_player(venue_id, {
+                "type": "play_song",
+                "data": _queue_item_to_dict(next_item),
+            })
+
+        return _queue_item_to_dict(next_item) if next_item else None
+    finally:
+        _auto_skip_in_flight.discard(venue_id)

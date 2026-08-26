@@ -42,6 +42,7 @@
         var ws = null, player = null, currentVideoId = null;
         var stuckTimer = null, hasPlayed = false;
         var usingHtml5 = false;
+        var skipLock = false;
 
         function loadYouTubeAPI() {
             var tag = document.createElement('script');
@@ -125,7 +126,25 @@
         }
 
         async function autoSkip() {
+            // Protección: solo saltar UNA vez por canción. El evento 'error',
+            // play().catch() y 'ended' pueden dispararse juntos; sin este guard
+            // una misma canción fallida consumiría varias de la cola.
+            if (skipLock) return;
+            skipLock = true;
             clearTimeout(stuckTimer);
+
+            // Detener la reproducción actual para evitar más eventos de error/ended
+            try {
+                if (usingHtml5) {
+                    var hv = getHtml5Player();
+                    hv.pause();
+                    hv.removeAttribute('src');
+                    hv.load();
+                } else if (player && player.stopVideo) {
+                    player.stopVideo();
+                }
+            } catch(e) {}
+
             try {
                 await fetch(API_URL + '/api/v1/queue/venue/' + venueId + '/auto-skip', { method: 'POST' });
             } catch(e) {}
@@ -180,6 +199,7 @@
             if (!vid) return;
             if (vid !== currentVideoId) {
                 currentVideoId = vid;
+                skipLock = false;
                 hasPlayed = false;
                 showYouTubePlayer();
                 clearTimeout(stuckTimer);
