@@ -16,6 +16,7 @@ class SongCreate(SongBase):
     channel: str | None = Field(None, max_length=255)
     thumbnail_url: str | None = Field(None, max_length=1000)
     duration_seconds: int | None = Field(None, ge=1)
+    genre: str | None = Field(None, max_length=100)
 
 
 class SongResponse(SongBase):
@@ -26,6 +27,7 @@ class SongResponse(SongBase):
     channel: str | None
     thumbnail_url: str | None
     duration_seconds: int | None
+    genre: str | None
     created_at: datetime
 
 
@@ -36,3 +38,4 @@ class YouTubeSearchResult(BaseModel):
     channel: str
     thumbnail_url: str
     duration_seconds: int | None = None
+    genre: str | None = None

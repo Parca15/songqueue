@@ -1,13 +1,13 @@
 """
-Configuración centralizada del proyecto usando Pydantic Settings.
-Permite cargar variables desde .env y validar tipos automáticamente.
+Configuracion centralizada del proyecto usando Pydantic Settings.
+Permite cargar variables desde .env y validar tipos automaticamente.
 """
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Configuración de la aplicación."""
+    """Configuracion de la aplicacion."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -40,5 +40,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Singleton de configuración."""
+    """Singleton de configuracion."""
     return Settings()

@@ -39,6 +39,35 @@ async def get_now_playing(db: AsyncSession, venue_id: int) -> QueueItem | None:
     return result.scalar_one_or_none()
 
 
+async def get_pending_count(db: AsyncSession, venue_id: int) -> int:
+    """Obtiene el número de canciones pendientes en la cola."""
+    result = await db.execute(
+        select(func.count(QueueItem.id)).where(
+            QueueItem.venue_id == venue_id,
+            QueueItem.status == QueueStatus.PENDING,
+        )
+    )
+    return result.scalar() or 0
+
+
+async def get_last_played_genre(db: AsyncSession, venue_id: int) -> str | None:
+    """Obtiene el género de la última canción reproducida en un local."""
+    result = await db.execute(
+        select(QueueItem)
+        .options(selectinload(QueueItem.song))
+        .where(
+            QueueItem.venue_id == venue_id,
+            QueueItem.status.in_([QueueStatus.PLAYED, QueueStatus.SKIPPED]),
+        )
+        .order_by(QueueItem.played_at.desc())
+        .limit(1)
+    )
+    last_item = result.scalar_one_or_none()
+    if last_item and last_item.song and last_item.song.genre:
+        return last_item.song.genre
+    return None
+
+
 async def add_song_to_queue(
     db: AsyncSession,
     venue_id: int,
@@ -77,6 +106,55 @@ async def reorder_queue(db: AsyncSession, venue_id: int, reorder: QueueReorder) 
             .where(QueueItem.id == item_id, QueueItem.venue_id == venue_id)
             .values(position=idx)
         )
+    await db.commit()
+    return await get_queue_by_venue(db, venue_id)
+
+
+async def move_to_position(db: AsyncSession, venue_id: int, item_id: int, new_position: int) -> list[QueueItem]:
+    """Mueve un item a una posición específica, desplazando los demás."""
+    from sqlalchemy import case
+
+    # Obtener el item actual y su posición
+    result = await db.execute(
+        select(QueueItem).where(QueueItem.id == item_id, QueueItem.venue_id == venue_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        return []
+
+    old_position = item.position
+
+    if old_position == new_position:
+        return await get_queue_by_venue(db, venue_id)
+
+    # Obtener todos los items activos ordenados por posición
+    result = await db.execute(
+        select(QueueItem).where(
+            QueueItem.venue_id == venue_id,
+            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+        ).order_by(QueueItem.position)
+    )
+    all_items = result.scalars().all()
+
+    # Reconstruir el orden
+    positions = []
+    for qi in all_items:
+        if qi.id == item_id:
+            continue
+        positions.append(qi)
+
+    # Insertar en la nueva posición
+    new_pos_idx = new_position - 1
+    if new_pos_idx < 0:
+        new_pos_idx = 0
+    elif new_pos_idx >= len(positions):
+        new_pos_idx = len(positions)
+    positions.insert(new_pos_idx, item)
+
+    # Asignar nuevas posiciones
+    for idx, qi in enumerate(positions, start=1):
+        qi.position = idx
+
     await db.commit()
     return await get_queue_by_venue(db, venue_id)
 

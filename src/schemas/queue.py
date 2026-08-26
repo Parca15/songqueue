@@ -15,9 +15,14 @@ class QueueItemBase(BaseModel):
 
 class QueueItemCreate(BaseModel):
     """Schema para agregar una canción a la cola."""
-    youtube_id: str = Field(..., min_length=5, max_length=20)
+    youtube_id: str = Field(..., min_length=1, max_length=20)
     requested_by: str | None = Field(None, max_length=100)
     device_fingerprint: str = Field(..., min_length=10, max_length=128)
+    title: str | None = Field(None, max_length=500)
+    channel: str | None = Field(None, max_length=255)
+    thumbnail_url: str | None = Field(None, max_length=1000)
+    duration_seconds: int | None = Field(None, ge=1)
+    genre: str | None = Field(None, max_length=100)
 
 
 class QueueItemResponse(BaseModel):
@@ -37,6 +42,12 @@ class QueueItemResponse(BaseModel):
 class QueueReorder(BaseModel):
     """Schema para reordenar la cola."""
     item_ids: list[int] = Field(..., min_length=1, description="IDs de items en el nuevo orden")
+
+
+class QueueMoveToPosition(BaseModel):
+    """Schema para mover un item a una posición específica."""
+    item_id: int
+    new_position: int = Field(..., ge=1, description="Nueva posición (1 = primero)")
 
 
 class QueueState(BaseModel):

@@ -6,104 +6,246 @@
     <title>SongQueue - Admin</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
-        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; padding: 20px 0; border-bottom: 1px solid #333; margin-bottom: 20px; }
-        header h1 { font-size: 1.8rem; }
-        .login-form { max-width: 400px; margin: 60px auto; padding: 30px; background: #1a1a1a; border-radius: 16px; border: 1px solid #333; }
-        .login-form h2 { margin-bottom: 20px; text-align: center; }
-        .login-form input { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #333; background: #222; color: #fff; font-size: 15px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+        header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid #222; margin-bottom: 28px; }
+        header h1 { font-size: 2rem; background: linear-gradient(135deg, #e91e63, #ff5722); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header .venue-tag { font-size: 16px; color: #888; background: #1a1a1a; padding: 8px 18px; border-radius: 24px; border: 1px solid #333; }
+        .logout-btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #f44336; background: transparent; color: #f44336; font-size: 15px; cursor: pointer; }
+        .logout-btn:hover { background: #f44336; color: #fff; }
+
+        .login-form { max-width: 440px; margin: 100px auto; padding: 40px; background: #141414; border-radius: 18px; border: 1px solid #222; }
+        .login-form h2 { margin-bottom: 28px; text-align: center; font-size: 1.5rem; }
+        .login-form input { width: 100%; padding: 16px 20px; margin-bottom: 16px; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; }
         .login-form input:focus { outline: none; border-color: #e91e63; }
-        .login-form button { width: 100%; padding: 14px; border-radius: 10px; border: none; background: #e91e63; color: #fff; font-size: 16px; cursor: pointer; font-weight: 600; }
-        .login-form button:hover { background: #c2185b; }
+        .login-form button { width: 100%; padding: 16px; border-radius: 12px; border: none; background: linear-gradient(135deg, #e91e63, #c2185b); color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; }
+        .login-form button:hover { opacity: 0.9; }
         .hidden { display: none !important; }
+
         .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; }
-        .card h3 { font-size: 1rem; margin-bottom: 15px; color: #e91e63; }
-        .config-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
+        .card { background: #141414; border: 1px solid #222; border-radius: 16px; padding: 24px; }
+        .card h3 { font-size: 1rem; margin-bottom: 18px; color: #e91e63; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .full-width { grid-column: 1 / -1; }
+
+        .top-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .qr-card { text-align: center; }
+        .qr-card img { width: 200px; height: 200px; margin: 14px 0; border-radius: 14px; border: 3px solid #333; }
+        .qr-card .qr-link { display: block; color: #e91e63; text-decoration: none; font-size: 14px; margin-bottom: 16px; word-break: break-all; }
+        .video-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px; border: none; background: linear-gradient(135deg, #e91e63, #c2185b); color: #fff; font-size: 16px; cursor: pointer; font-weight: 600; }
+        .video-btn:hover { opacity: 0.85; }
+
+        .stat-row { display: flex; gap: 12px; }
+        .stat-box { flex: 1; background: #1a1a1a; padding: 18px 14px; border-radius: 12px; text-align: center; border: 1px solid #222; }
+        .stat-box .number { font-size: 2.2rem; font-weight: 700; color: #e91e63; }
+        .stat-box .label { font-size: 13px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .config-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #1a1a1a; }
         .config-row:last-child { border-bottom: none; }
-        .config-row label { color: #aaa; font-size: 14px; }
-        .config-row input, .config-row select { background: #222; border: 1px solid #444; color: #fff; padding: 6px 10px; border-radius: 6px; width: 120px; }
-        .config-row input[type="checkbox"] { width: auto; }
-        .btn-save { margin-top: 15px; padding: 10px 20px; border-radius: 8px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-weight: 600; }
+        .config-row label { color: #999; font-size: 15px; }
+        .config-row input[type="number"] { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 14px; border-radius: 8px; width: 90px; text-align: center; font-size: 15px; }
+        .config-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: #e91e63; }
+        .btn-save { margin-top: 18px; width: 100%; padding: 14px; border-radius: 10px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-weight: 600; font-size: 16px; }
         .btn-save:hover { background: #45a049; }
-        .queue-admin { grid-column: 1 / -1; }
-        .queue-item-admin { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #222; margin-bottom: 8px; border: 1px solid #333; }
-        .queue-item-admin.playing { border-color: #e91e63; background: #2a1a1a; }
-        .queue-item-admin img { width: 60px; height: 45px; border-radius: 6px; object-fit: cover; }
-        .queue-item-admin .info { flex: 1; }
-        .queue-item-admin .info h4 { font-size: 13px; }
-        .queue-item-admin .info p { font-size: 11px; color: #888; }
-        .queue-item-admin .actions { display: flex; gap: 6px; }
-        .queue-item-admin .actions button { padding: 6px 12px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; }
+
+        .search-box { display: flex; gap: 10px; margin-bottom: 16px; }
+        .search-box input { flex: 1; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; }
+        .search-box input:focus { outline: none; border-color: #e91e63; }
+        .search-box button { padding: 14px 28px; border-radius: 12px; border: none; background: #e91e63; color: #fff; cursor: pointer; font-weight: 600; font-size: 16px; }
+        .search-results { max-height: 450px; overflow-y: auto; }
+        .search-results::-webkit-scrollbar { width: 8px; }
+        .search-results::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+        .song-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; transition: border-color 0.2s; }
+        .song-card:hover { border-color: #444; }
+        .song-card img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
+        .song-card .info { flex: 1; min-width: 0; }
+        .song-card .info h4 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-card .info p { font-size: 13px; color: #666; }
+        .song-card .actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .song-card .actions button { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; }
+        .btn-add-queue { background: #4caf50; color: #fff; }
+        .btn-add-queue:hover { background: #45a049; }
+        .btn-add-playlist { background: #2196f3; color: #fff; }
+        .btn-add-playlist:hover { background: #1976d2; }
+
+        .tabs { display: flex; gap: 4px; margin-bottom: 18px; background: #1a1a1a; border-radius: 12px; padding: 4px; }
+        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: #888; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
+        .tab-btn.active { background: #e91e63; color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .queue-item-admin { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; transition: border-color 0.2s; }
+        .queue-item-admin:hover { border-color: #444; }
+        .queue-item-admin.playing { border-color: #e91e63; background: linear-gradient(135deg, #2a1520, #1a1a1a); }
+        .queue-item-admin img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
+        .queue-item-admin .pos { width: 32px; text-align: center; font-size: 15px; font-weight: 700; color: #666; }
+        .queue-item-admin.playing .pos { color: #e91e63; }
+        .queue-item-admin .info { flex: 1; min-width: 0; }
+        .queue-item-admin .info h4 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .queue-item-admin .info p { font-size: 13px; color: #666; }
+        .queue-item-admin .actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .queue-item-admin .actions button { padding: 8px 14px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; }
         .btn-play { background: #2196f3; color: #fff; }
         .btn-skip { background: #ff9800; color: #fff; }
         .btn-remove { background: #f44336; color: #fff; }
-        .qr-section { text-align: center; }
-        .qr-section img { max-width: 200px; margin: 10px 0; border-radius: 8px; }
-        .qr-section a { color: #e91e63; text-decoration: none; font-size: 13px; }
-        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .stat-box { background: #222; padding: 15px; border-radius: 10px; text-align: center; }
-        .stat-box .number { font-size: 1.5rem; font-weight: 700; color: #e91e63; }
-        .stat-box .label { font-size: 12px; color: #888; margin-top: 4px; }
-        .error { background: #3a1a1a; color: #ff6b6b; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
-        .success { background: #1a3a1a; color: #6bff6b; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+        .btn-move { background: #9c27b0; color: #fff; }
+
+        .playlist-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; }
+        .playlist-item img { width: 60px; height: 46px; border-radius: 8px; object-fit: cover; }
+        .playlist-item .info { flex: 1; }
+        .playlist-item .info h4 { font-size: 15px; }
+        .playlist-item .info p { font-size: 13px; color: #666; }
+        .playlist-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; }
+        .playlist-card .info { flex: 1; }
+        .playlist-card .info h4 { font-size: 16px; }
+        .playlist-card .info p { font-size: 14px; color: #666; }
+        .playlist-card .actions { display: flex; gap: 6px; }
+        .playlist-card .actions button { padding: 10px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; }
+        .btn-playlist { background: #4caf50; color: #fff; }
+        .btn-view { background: #2196f3; color: #fff; }
+        .btn-delete { background: #f44336; color: #fff; }
+
+        .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .dialog-content { background: #141414; padding: 32px; border-radius: 16px; border: 1px solid #333; min-width: 360px; }
+        .dialog-content h3 { margin-bottom: 20px; color: #e91e63; font-size: 1.3rem; }
+        .dialog-content input { width: 100%; padding: 14px 18px; margin-bottom: 16px; border-radius: 10px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; }
+        .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .dialog-actions button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px; cursor: pointer; font-weight: 600; }
+        .btn-cancel { background: #333; color: #fff; }
+        .btn-confirm { background: #4caf50; color: #fff; }
+
+        .empty-msg { color: #555; padding: 32px; text-align: center; font-size: 16px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .btn-new { padding: 10px 20px; border-radius: 10px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-size: 15px; font-weight: 600; }
+        .error { background: #2a1515; color: #ff6b6b; padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; font-size: 15px; border: 1px solid #3a1a1a; }
+        .success { background: #152a15; color: #6bff6b; padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; font-size: 15px; border: 1px solid #1a3a1a; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>SongQueue Admin</h1>
-            <p id="venue-name">Panel de administracion</p>
+            <h1>SongQueue</h1>
+            <span id="venue-name" class="venue-tag">Panel de administracion</span>
+            <button id="logout-btn" class="logout-btn hidden" onclick="logout()">Cerrar sesion</button>
         </header>
         <div id="message"></div>
         <div id="login-section" class="login-form">
             <h2>Iniciar Sesion</h2>
-            <input type="text" id="username" placeholder="Usuario">
-            <input type="password" id="password" placeholder="Contrasena">
+            <input type="text" id="username" placeholder="Usuario" onkeypress="if(event.key==='Enter')login()">
+            <input type="password" id="password" placeholder="Contrasena" onkeypress="if(event.key==='Enter')login()">
             <button onclick="login()">Entrar</button>
         </div>
         <div id="admin-panel" class="panel hidden">
-            <div class="card">
-                <h3>Configuracion</h3>
-                <div class="config-row"><label>Max canciones/dispositivo</label><input type="number" id="cfg-max-songs" min="1" max="20"></div>
-                <div class="config-row"><label>Max tamano cola</label><input type="number" id="cfg-max-queue" min="5" max="200"></div>
-                <div class="config-row"><label>Permitir duplicados</label><input type="checkbox" id="cfg-duplicates"></div>
-                <div class="config-row"><label>Local activo</label><input type="checkbox" id="cfg-active"></div>
-                <button class="btn-save" onclick="saveConfig()">Guardar</button>
+            <div class="top-row">
+                <div class="card qr-card">
+                    <h3>QR del Cliente</h3>
+                    <img id="qr-image" src="" alt="QR Code">
+                    <a id="qr-link" href="#" target="_blank" class="qr-link"></a>
+                    <button class="video-btn" onclick="openPlayer()">&#9654; Abrir Reproductor</button>
+                </div>
+                <div class="card">
+                    <h3>Estadisticas</h3>
+                    <div class="stat-row" style="flex-direction:column;gap:10px;">
+                        <div class="stat-box"><div class="number" id="stat-pending">0</div><div class="label">En cola</div></div>
+                        <div class="stat-box"><div class="number" id="stat-played">0</div><div class="label">Reproducidas</div></div>
+                        <div class="stat-box"><div class="number" id="stat-devices">0</div><div class="label">Dispositivos</div></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Configuracion</h3>
+                    <div class="config-row"><label>Max canciones/dispositivo</label><input type="number" id="cfg-max-songs" min="1" max="20"></div>
+                    <div class="config-row"><label>Max tamano cola</label><input type="number" id="cfg-max-queue" min="5" max="200"></div>
+                    <div class="config-row"><label>Permitir duplicados</label><input type="checkbox" id="cfg-duplicates"></div>
+                    <div class="config-row"><label>Local activo</label><input type="checkbox" id="cfg-active"></div>
+                    <button class="btn-save" onclick="saveConfig()">Guardar Cambios</button>
+                </div>
             </div>
-            <div class="card qr-section">
-                <h3>Codigo QR</h3>
-                <img id="qr-image" src="" alt="QR Code"><br>
-                <a id="qr-link" href="#" target="_blank">URL del local</a>
+            <div class="card full-width">
+                <h3>Buscar Canciones</h3>
+                <div class="search-box">
+                    <input type="text" id="admin-search-input" placeholder="Buscar en YouTube..." onkeypress="if(event.key==='Enter') adminSearchSongs()">
+                    <button onclick="adminSearchSongs()">Buscar</button>
+                </div>
+                <div id="admin-search-results" class="search-results"></div>
             </div>
-            <div class="card stats">
-                <div class="stat-box"><div class="number" id="stat-pending">0</div><div class="label">En cola</div></div>
-                <div class="stat-box"><div class="number" id="stat-played">0</div><div class="label">Reproducidas</div></div>
-                <div class="stat-box"><div class="number" id="stat-devices">0</div><div class="label">Dispositivos</div></div>
+            <div class="card full-width">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('queue')">Cola Actual</button>
+                    <button class="tab-btn" onclick="switchTab('playlists')">Playlists</button>
+                </div>
+                <div id="tab-queue" class="tab-content active">
+                    <div style="margin-bottom:14px;"><button class="btn-skip" onclick="skipSong()">Saltar Cancion</button></div>
+                    <div id="queue-list-admin"></div>
+                </div>
+                <div id="tab-playlists" class="tab-content">
+                    <div class="section-header">
+                        <h3 style="color:#e91e63;font-size:1rem;text-transform:uppercase;letter-spacing:1px;margin:0;">Mis Playlists</h3>
+                        <button class="btn-new" onclick="openNewPlaylistDialog()">+ Nueva</button>
+                    </div>
+                    <div id="playlists-list"></div>
+                    <div id="playlist-detail" class="hidden">
+                        <div style="margin-bottom:14px;display:flex;align-items:center;gap:14px;">
+                            <button class="btn-cancel" onclick="closePlaylistDetail()" style="padding:8px 14px;font-size:14px;">&larr; Volver</button>
+                            <span id="playlist-detail-name" style="font-weight:600;font-size:16px;"></span>
+                            <button class="btn-playlist" onclick="playCurrentPlaylist()" style="margin-left:auto;padding:10px 18px;font-size:14px;">Reproducir</button>
+                        </div>
+                        <div id="playlist-detail-items"></div>
+                    </div>
+                </div>
             </div>
-            <div class="card queue-admin">
-                <h3>Gestion de Cola</h3>
-                <div style="margin-bottom:15px;"><button class="btn-skip" onclick="skipSong()">Saltar Cancion</button></div>
-                <div id="queue-list-admin"></div>
+        </div>
+    </div>
+    <div id="move-dialog" class="dialog-overlay hidden">
+        <div class="dialog-content">
+            <h3>Mover a Posicion</h3>
+            <input type="number" id="move-position-input" min="1" placeholder="Posicion">
+            <div class="dialog-actions">
+                <button class="btn-cancel" onclick="closeMoveDialog()">Cancelar</button>
+                <button class="btn-confirm" onclick="confirmMove()">Mover</button>
+            </div>
+        </div>
+    </div>
+    <div id="new-playlist-dialog" class="dialog-overlay hidden">
+        <div class="dialog-content">
+            <h3>Nueva Playlist</h3>
+            <input type="text" id="new-playlist-name" placeholder="Nombre de la playlist" onkeypress="if(event.key==='Enter')createPlaylist()">
+            <div class="dialog-actions">
+                <button class="btn-cancel" onclick="closeNewPlaylistDialog()">Cancelar</button>
+                <button class="btn-confirm" onclick="createPlaylist()">Crear</button>
+            </div>
+        </div>
+    </div>
+    <div id="add-to-playlist-dialog" class="dialog-overlay hidden">
+        <div class="dialog-content">
+            <h3>Agregar a Playlist</h3>
+            <div id="add-to-playlist-list"></div>
+            <div class="dialog-actions" style="margin-top:14px;">
+                <button class="btn-cancel" onclick="closeAddToPlaylistDialog()">Cancelar</button>
             </div>
         </div>
     </div>
     <script>
         const API_URL = window.location.origin;
         let token = localStorage.getItem('sq_admin_token');
-        let venueId = null;
+        let venueId = localStorage.getItem('sq_admin_venue');
         let ws = null;
+        let currentPlaylistId = null;
+        let pendingSongData = null;
 
         async function init() {
-            venueId = new URLSearchParams(window.location.search).get('venue');
-            if (!venueId) { showMessage('Error: Especifica ?venue=ID', 'error'); return; }
-            if (token) { showPanel(); }
+            if (token && venueId) { showPanel(); }
         }
         function showPanel() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
-            loadVenueData(); loadQueue(); connectWebSocket();
+            document.getElementById('logout-btn').classList.remove('hidden');
+            loadVenueData(); loadQueue(); connectWebSocket(); loadPlaylists();
+        }
+        function hidePanel() {
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('logout-btn').classList.add('hidden');
         }
         async function login() {
             try {
@@ -111,9 +253,21 @@
                     method: 'POST', headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({username: document.getElementById('username').value, password: document.getElementById('password').value})
                 });
-                if (res.ok) { const data = await res.json(); token = data.access_token; localStorage.setItem('sq_admin_token', token); showPanel(); }
+                if (res.ok) {
+                    const data = await res.json();
+                    token = data.access_token;
+                    venueId = data.venue_id;
+                    localStorage.setItem('sq_admin_token', token);
+                    localStorage.setItem('sq_admin_venue', venueId);
+                    showPanel();
+                }
                 else { showMessage('Usuario o contrasena incorrectos', 'error'); }
             } catch(e) { showMessage('Error de conexion', 'error'); }
+        }
+        async function logout() {
+            try { await fetch(`${API_URL}/api/v1/auth/logout`, { method: 'POST', headers: {'Authorization': `Bearer ${token}`} }); } catch(e) {}
+            token = null; venueId = null; localStorage.removeItem('sq_admin_token'); localStorage.removeItem('sq_admin_venue'); hidePanel(); showMessage('Sesion cerrada', 'success');
+            if (ws) { ws.close(); ws = null; }
         }
         function connectWebSocket() {
             const wsUrl = API_URL.replace('http','ws') + `/ws/venue/${venueId}`;
@@ -132,32 +286,193 @@
                 document.getElementById('cfg-active').checked = v.is_active;
                 const qrRes = await fetch(`${API_URL}/api/v1/venues/${venueId}/qr`, {headers:{'Authorization':`Bearer ${token}`}});
                 const qr = await qrRes.json(); document.getElementById('qr-image').src = qr.qr_base64;
-                document.getElementById('qr-link').href = qr.join_url + `?venue=${venueId}`;
+                document.getElementById('qr-link').href = qr.join_url;
                 document.getElementById('qr-link').textContent = qr.join_url;
             } catch(e) {}
+        }
+        function openPlayer() {
+            window.open(`${API_URL}/player.html?venue=${venueId}`, '_blank', 'width=1280,height=720');
         }
         async function saveConfig() {
             const updates = { max_songs_per_device: parseInt(document.getElementById('cfg-max-songs').value), max_queue_size: parseInt(document.getElementById('cfg-max-queue').value), allow_duplicates: document.getElementById('cfg-duplicates').checked, is_active: document.getElementById('cfg-active').checked };
             try { const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`, {method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify(updates)});
             if (res.ok) showMessage('Configuracion guardada', 'success'); else showMessage('Error', 'error'); } catch(e) {}
         }
-        async function loadQueue() { try { const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`, {headers:{'Authorization':`Bearer ${token}`}}); renderQueueAdmin(await res.json()); } catch(e) {} }
+        async function loadQueue() { try { const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`); renderQueueAdmin(await res.json()); } catch(e) {} }
         function renderQueueAdmin(data) {
             document.getElementById('stat-pending').textContent = data.total_pending || 0;
-            const container = document.getElementById('queue-list-admin'); let html = '';
-            if (data.now_playing) html += renderItem(data.now_playing, 0, true);
-            if (data.upcoming && data.upcoming.length) html += data.upcoming.map((it, i) => renderItem(it, i+1, false)).join('');
-            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div style="color:#666;padding:20px;text-align:center;">Cola vacia</div>';
-            container.innerHTML = html;
+            const c = document.getElementById('queue-list-admin'); let html = '';
+            if (data.now_playing) html += renderQueueItem(data.now_playing, 0, true);
+            if (data.upcoming && data.upcoming.length) html += data.upcoming.map((it, i) => renderQueueItem(it, i+1, false)).join('');
+            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div class="empty-msg">Cola vacia</div>';
+            c.innerHTML = html;
         }
-        function renderItem(item, pos, playing) {
+        function renderQueueItem(item, pos, playing) {
             const s = item.song || {};
-            return `<div class="queue-item-admin ${playing?'playing':''}"><div style="width:28px;text-align:center;font-weight:700;">${playing?'&#9654;':pos}</div><img src="${s.thumbnail_url||''}" alt=""><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')} - ${item.requested_by||'Anonimo'}</p></div><div class="actions">${!playing?`<button class="btn-play" onclick="playItem(${item.id})">&#9654;</button>`:''}<button class="btn-remove" onclick="removeItem(${item.id})">&#10005;</button></div></div>`;
+            return `<div class="queue-item-admin ${playing?'playing':''}"><div class="pos">${playing?'&#9654;':pos}</div><img src="${s.thumbnail_url||''}" alt=""><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')} &middot; ${item.requested_by||'Anonimo'}</p></div><div class="actions">${!playing?`<button class="btn-play" onclick="playItem(${item.id})">&#9654;</button>`:''}${!playing?`<button class="btn-move" onclick="openMoveDialog(${item.id})">Mover</button>`:''}<button class="btn-remove" onclick="removeItem(${item.id})">&#10005;</button></div></div>`;
         }
         async function playItem(id) { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/play/${id}`, {method:'POST',headers:{'Authorization':`Bearer ${token}`}}); }
         async function skipSong() { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/skip`, {method:'POST',headers:{'Authorization':`Bearer ${token}`}}); }
         async function removeItem(id) { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/item/${id}`, {method:'DELETE',headers:{'Authorization':`Bearer ${token}`}}); }
-        function showMessage(text, type) { const el = document.getElementById('message'); el.innerHTML = `<div class="${type}">${text}</div>`; setTimeout(()=>el.innerHTML='',3000); }
+        let currentMoveItemId = null;
+        function openMoveDialog(itemId) { currentMoveItemId = itemId; document.getElementById('move-position-input').value = ''; document.getElementById('move-dialog').classList.remove('hidden'); }
+        function closeMoveDialog() { document.getElementById('move-dialog').classList.add('hidden'); currentMoveItemId = null; }
+        async function confirmMove() {
+            const pos = parseInt(document.getElementById('move-position-input').value);
+            if (!pos || pos < 1 || !currentMoveItemId) return;
+            await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/move`, { method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify({item_id: currentMoveItemId, new_position: pos}) });
+            closeMoveDialog(); loadQueue();
+        }
+
+        // Buscar
+        let searchResults = [];
+        async function adminSearchSongs() {
+            const query = document.getElementById('admin-search-input').value.trim();
+            if (!query) return;
+            const c = document.getElementById('admin-search-results');
+            c.innerHTML = '<div style="color:#666;padding:20px;text-align:center;font-size:16px;">Buscando...</div>';
+            try {
+                const res = await fetch(`${API_URL}/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=10`);
+                if (!res.ok) { c.innerHTML = '<div style="color:#ff6b6b;">Error al buscar</div>'; return; }
+                searchResults = await res.json();
+                if (!searchResults || !searchResults.length) { c.innerHTML = '<div class="empty-msg">Sin resultados</div>'; return; }
+                c.innerHTML = searchResults.map((s, i) => `<div class="song-card"><img src="${s.thumbnail_url||''}" alt="" onerror="this.style.display='none'"><div class="info"><h4>${escapeHtml(s.title)}</h4><p>${escapeHtml(s.channel||'')}</p></div><div class="actions"><button class="btn-add-queue" onclick="adminAddToQueue(${i},this)">Cola</button><button class="btn-add-playlist" onclick="openAddToPlaylistDialog(${i})">Playlist</button></div></div>`).join('');
+            } catch(e) { c.innerHTML = '<div style="color:#ff6b6b;">Error de conexion</div>'; }
+        }
+        async function adminAddToQueue(idx, btn) {
+            const s = searchResults[idx];
+            if (!s) return;
+            btn.disabled = true; btn.textContent = '...';
+            try {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({youtube_id:s.youtube_id, device_fingerprint:'admin-venue-'+venueId, requested_by:'Admin', title:s.title, channel:s.channel, thumbnail_url:s.thumbnail_url, duration_seconds:s.duration_seconds})
+                });
+                if (res.ok) { showMessage('Agregada a la cola', 'success'); loadQueue(); }
+                else { const e = await res.json(); showMessage(e.detail||'Error', 'error'); }
+            } catch(e) { showMessage('Error de conexion', 'error'); }
+            btn.disabled = false; btn.textContent = 'Cola';
+        }
+
+        // Playlists
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            if (tab === 'queue') { document.querySelectorAll('.tab-btn')[0].classList.add('active'); document.getElementById('tab-queue').classList.add('active'); }
+            else { document.querySelectorAll('.tab-btn')[1].classList.add('active'); document.getElementById('tab-playlists').classList.add('active'); loadPlaylists(); }
+        }
+        async function loadPlaylists() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}`, {headers:{'Authorization':`Bearer ${token}`}});
+                const playlists = await res.json();
+                const c = document.getElementById('playlists-list');
+                if (!playlists || !playlists.length) { c.innerHTML = '<div class="empty-msg">No hay playlists. Crea una para empezar.</div>'; return; }
+                c.innerHTML = playlists.map(pl => `<div class="playlist-card"><div class="info"><h4>${escapeHtml(pl.name)}</h4><p>${pl.item_count} canciones</p></div><div class="actions"><button class="btn-view" onclick="viewPlaylist(${pl.id},'${escapeHtml(pl.name).replace(/'/g,"\\'")}')">Ver</button><button class="btn-playlist" onclick="playPlaylist(${pl.id})">Reproducir</button><button class="btn-delete" onclick="deletePlaylist(${pl.id})">&#10005;</button></div></div>`).join('');
+            } catch(e) {}
+        }
+        function openNewPlaylistDialog() { document.getElementById('new-playlist-name').value = ''; document.getElementById('new-playlist-dialog').classList.remove('hidden'); }
+        function closeNewPlaylistDialog() { document.getElementById('new-playlist-dialog').classList.add('hidden'); }
+        async function createPlaylist() {
+            const name = document.getElementById('new-playlist-name').value.trim();
+            if (!name) return;
+            try {
+                const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}`, {
+                    method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+                    body: JSON.stringify({name})
+                });
+                if (res.ok) { showMessage('Playlist creada', 'success'); closeNewPlaylistDialog(); loadPlaylists(); }
+                else { showMessage('Error', 'error'); }
+            } catch(e) { showMessage('Error de conexion', 'error'); }
+        }
+        async function deletePlaylist(id) {
+            if (!confirm('Eliminar playlist?')) return;
+            try {
+                await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${id}`, {method:'DELETE', headers:{'Authorization':`Bearer ${token}`}});
+                showMessage('Playlist eliminada', 'success'); loadPlaylists();
+            } catch(e) {}
+        }
+        async function playPlaylist(id) {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${id}/play`, {method:'POST', headers:{'Authorization':`Bearer ${token}`}});
+                const data = await res.json();
+                if (res.ok) { showMessage(`${data.added} canciones agregadas a la cola`, 'success'); loadQueue(); }
+                else { showMessage(data.detail||'Error', 'error'); }
+            } catch(e) { showMessage('Error de conexion', 'error'); }
+        }
+        async function viewPlaylist(id, name) {
+            currentPlaylistId = id;
+            document.getElementById('playlist-detail-name').textContent = name;
+            document.getElementById('playlists-list').classList.add('hidden');
+            document.querySelector('.section-header').classList.add('hidden');
+            document.getElementById('playlist-detail').classList.remove('hidden');
+            try {
+                const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${id}`, {headers:{'Authorization':`Bearer ${token}`}});
+                const data = await res.json();
+                const c = document.getElementById('playlist-detail-items');
+                if (!data.items || !data.items.length) { c.innerHTML = '<div class="empty-msg">Playlist vacia. Agrega canciones desde la busqueda.</div>'; return; }
+                c.innerHTML = data.items.map(it => {
+                    const s = it.song || {};
+                    return `<div class="playlist-item"><img src="${s.thumbnail_url||''}" alt=""><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')}</p></div><button class="btn-remove" onclick="removeFromPlaylist(${it.id})">&#10005;</button></div>`;
+                }).join('');
+            } catch(e) {}
+        }
+        function closePlaylistDetail() {
+            currentPlaylistId = null;
+            document.getElementById('playlist-detail').classList.add('hidden');
+            document.getElementById('playlists-list').classList.remove('hidden');
+            document.querySelector('.section-header').classList.remove('hidden');
+            loadPlaylists();
+        }
+        async function removeFromPlaylist(itemId) {
+            if (!currentPlaylistId) return;
+            try {
+                await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${currentPlaylistId}/item/${itemId}`, {method:'DELETE', headers:{'Authorization':`Bearer ${token}`}});
+                viewPlaylist(currentPlaylistId, document.getElementById('playlist-detail-name').textContent);
+            } catch(e) {}
+        }
+        function openAddToPlaylistDialog(idx) {
+            pendingSongData = searchResults[idx];
+            loadPlaylistsForDialog();
+            document.getElementById('add-to-playlist-dialog').classList.remove('hidden');
+        }
+        function closeAddToPlaylistDialog() { document.getElementById('add-to-playlist-dialog').classList.add('hidden'); pendingSongData = null; }
+        async function loadPlaylistsForDialog() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}`, {headers:{'Authorization':`Bearer ${token}`}});
+                const playlists = await res.json();
+                const c = document.getElementById('add-to-playlist-list');
+                if (!playlists || !playlists.length) { c.innerHTML = '<div class="empty-msg">No hay playlists. Crea una primero.</div>'; return; }
+                c.innerHTML = playlists.map(pl => `<div class="playlist-card"><div class="info"><h4>${escapeHtml(pl.name)}</h4><p>${pl.item_count} canciones</p></div><div class="actions"><button class="btn-playlist" onclick="addSongToPlaylist(${pl.id})">Agregar</button></div></div>`).join('');
+            } catch(e) {}
+        }
+        async function addSongToPlaylist(playlistId) {
+            if (!pendingSongData) return;
+            let songId = pendingSongData.song_id;
+            if (!songId) {
+                try {
+                    const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({youtube_id: pendingSongData.youtube_id, device_fingerprint:'admin-venue-'+venueId, requested_by:'Admin', title: pendingSongData.title, channel: pendingSongData.channel, thumbnail_url: pendingSongData.thumbnail_url, duration_seconds: pendingSongData.duration_seconds})
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        songId = data.song_id;
+                        await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/item/${data.id}`, {method:'DELETE', headers:{'Authorization':`Bearer ${token}`}});
+                    }
+                } catch(e) {}
+            }
+            if (!songId) { showMessage('Error: no se pudo guardar la cancion', 'error'); closeAddToPlaylistDialog(); return; }
+            try {
+                const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${playlistId}/add`, {
+                    method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+                    body: JSON.stringify({song_id: songId})
+                });
+                if (res.ok) { showMessage('Cancion agregada a la playlist', 'success'); closeAddToPlaylistDialog(); }
+                else { showMessage('Error al agregar', 'error'); }
+            } catch(e) { showMessage('Error de conexion', 'error'); }
+        }
+
+        function showMessage(text, type) { const el = document.getElementById('message'); el.innerHTML = `<div class="${type}">${text}</div>`; setTimeout(()=>el.innerHTML='',4000); }
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         init();
     </script>

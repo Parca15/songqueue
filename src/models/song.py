@@ -21,6 +21,7 @@ class Song(Base):
     channel = Column(String(255), nullable=True)
     thumbnail_url = Column(Text, nullable=True)
     duration_seconds = Column(Integer, nullable=True)  # Duración en segundos
+    genre = Column(String(100), nullable=True, index=True)  # Género para auto-play
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

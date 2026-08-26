@@ -1,5 +1,5 @@
 """
-Entry point de la aplicación FastAPI.
+Entry point de la aplicacion FastAPI.
 """
 from contextlib import asynccontextmanager
 
@@ -10,16 +10,24 @@ from fastapi.staticfiles import StaticFiles
 
 from src.config import get_settings
 from src.database import init_db
-from src.routers import venues, songs, queue, websocket, auth
+from src.routers import venues, songs, queue, websocket, auth, playlist
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Gestion del ciclo de vida de la app."""
+    # En modo debug, intentar crear tablas (no falla si BD no disponible)
     if settings.debug:
-        await init_db()
+        try:
+            await init_db()
+            print("✅ Tablas verificadas/creadas")
+        except Exception as e:
+            print(f"⚠️  init_db() omitido: {e}")
+            print("   Ejecuta: docker-compose up -d db")
     yield
+    # Shutdown
 
 
 app = FastAPI(
@@ -58,10 +66,13 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(venues.router, prefix="/api/v1/venues", tags=["venues"])
 app.include_router(songs.router, prefix="/api/v1/songs", tags=["songs"])
 app.include_router(queue.router, prefix="/api/v1/queue", tags=["queue"])
+app.include_router(playlist.router, prefix="/api/v1/playlists", tags=["playlists"])
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 # ── Static files (frontend) ──
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+import os
+if os.path.isdir("frontend"):
+    app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 
 @app.get("/health", tags=["health"])

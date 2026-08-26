@@ -3,98 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SongQueue - Elegir Canción</title>
+    <title>SongQueue - Elegir Cancion</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0f0f0f;
-            color: #fff;
-            min-height: 100vh;
-        }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; padding: 30px 0; border-bottom: 1px solid #333; margin-bottom: 20px; }
-        header h1 { font-size: 2rem; margin-bottom: 8px; }
-        header p { color: #888; }
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        .search-box input {
-            flex: 1; padding: 14px 18px; border-radius: 12px;
-            border: 1px solid #333; background: #1a1a1a; color: #fff;
-            font-size: 16px; outline: none;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
+        .container { max-width: 720px; margin: 0 auto; padding: 24px; }
+        header { text-align: center; padding: 36px 0; border-bottom: 1px solid #333; margin-bottom: 24px; }
+        header h1 { font-size: 2.4rem; margin-bottom: 10px; }
+        header p { color: #888; font-size: 1.1rem; }
+        .search-box { display: flex; gap: 12px; margin-bottom: 24px; }
+        .search-box input { flex: 1; padding: 16px 20px; border-radius: 14px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 18px; outline: none; }
         .search-box input:focus { border-color: #e91e63; }
-        .search-box button {
-            padding: 14px 24px; border-radius: 12px; border: none;
-            background: #e91e63; color: #fff; font-size: 16px;
-            cursor: pointer; font-weight: 600;
-        }
+        .search-box button { padding: 16px 28px; border-radius: 14px; border: none; background: #e91e63; color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; }
         .search-box button:hover { background: #c2185b; }
         .search-box button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .results { display: flex; flex-direction: column; gap: 10px; }
-        .song-card {
-            display: flex; align-items: center; gap: 14px;
-            padding: 12px; border-radius: 12px; background: #1a1a1a;
-            border: 1px solid #333; cursor: pointer; transition: all 0.2s;
-        }
+        .results { display: flex; flex-direction: column; gap: 12px; }
+        .song-card { display: flex; align-items: center; gap: 16px; padding: 14px; border-radius: 14px; background: #1a1a1a; border: 1px solid #333; cursor: pointer; transition: all 0.2s; }
         .song-card:hover { border-color: #e91e63; background: #222; }
-        .song-card img { width: 80px; height: 60px; border-radius: 8px; object-fit: cover; }
+        .song-card img { width: 96px; height: 72px; border-radius: 10px; object-fit: cover; }
         .song-info { flex: 1; }
-        .song-info h3 { font-size: 14px; margin-bottom: 4px; line-height: 1.3; }
-        .song-info p { font-size: 12px; color: #888; }
-        .song-card .add-btn {
-            padding: 8px 16px; border-radius: 8px; border: none;
-            background: #4caf50; color: #fff; font-size: 13px;
-            cursor: pointer; font-weight: 600;
-        }
+        .song-info h3 { font-size: 16px; margin-bottom: 6px; line-height: 1.3; }
+        .song-info p { font-size: 14px; color: #888; }
+        .song-card .add-btn { padding: 10px 20px; border-radius: 10px; border: none; background: #4caf50; color: #fff; font-size: 15px; cursor: pointer; font-weight: 600; }
         .song-card .add-btn:hover { background: #45a049; }
         .song-card .add-btn:disabled { background: #555; cursor: not-allowed; }
-        .queue-section { margin-top: 30px; }
-        .queue-section h2 { font-size: 1.2rem; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
-        .queue-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px; border-radius: 10px; background: #1a1a1a;
-            border: 1px solid #333; margin-bottom: 8px;
-        }
+        .queue-section { margin-top: 36px; }
+        .queue-section h2 { font-size: 1.4rem; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+        .queue-item { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 12px; background: #1a1a1a; border: 1px solid #333; margin-bottom: 10px; }
         .queue-item.playing { border-color: #e91e63; background: #2a1a1a; }
-        .queue-item img { width: 60px; height: 45px; border-radius: 6px; object-fit: cover; }
-        .queue-item .pos { width: 28px; height: 28px; border-radius: 50%;
-            background: #333; display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: 700;
-        }
+        .queue-item img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
+        .queue-item .pos { width: 34px; height: 34px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
         .queue-item.playing .pos { background: #e91e63; }
         .queue-info { flex: 1; }
-        .queue-info h4 { font-size: 13px; margin-bottom: 2px; }
-        .queue-info p { font-size: 11px; color: #888; }
-        .status-badge {
-            padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-        }
+        .queue-info h4 { font-size: 15px; margin-bottom: 4px; }
+        .queue-info p { font-size: 13px; color: #888; }
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
         .status-playing { background: #e91e63; }
         .status-pending { background: #333; color: #aaa; }
-        .empty { text-align: center; color: #666; padding: 40px; }
-        .error { background: #3a1a1a; color: #ff6b6b; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
-        .success { background: #1a3a1a; color: #6bff6b; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
-        .fingerprint { font-size: 11px; color: #444; text-align: center; margin-top: 20px; }
-        .loading { text-align: center; color: #888; padding: 20px; }
+        .empty { text-align: center; color: #666; padding: 48px; font-size: 16px; }
+        .error { background: #3a1a1a; color: #ff6b6b; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
+        .success { background: #1a3a1a; color: #6bff6b; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
+        .info-msg { background: #1a1a3a; color: #6b9fff; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
+        .fingerprint { font-size: 12px; color: #444; text-align: center; margin-top: 24px; }
+        .loading { text-align: center; color: #888; padding: 24px; font-size: 16px; }
+        .demo-badge { background: #e91e63; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 12px; margin-left: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎵 SongQueue</h1>
+            <h1>SongQueue</h1>
             <p id="venue-name">Cargando local...</p>
         </header>
 
         <div id="message"></div>
 
         <div class="search-box">
-            <input type="text" id="search-input" placeholder="Buscar canción en YouTube..." onkeypress="if(event.key==='Enter') searchSongs()">
+            <input type="text" id="search-input" placeholder="Buscar cancion en YouTube..." onkeypress="if(event.key==='Enter') searchSongs()">
             <button id="search-btn" onclick="searchSongs()">Buscar</button>
         </div>
 
         <div id="search-results" class="results"></div>
 
         <div class="queue-section">
-            <h2>📋 Cola Actual</h2>
+            <h2>Cola Actual</h2>
             <div id="queue-list"></div>
         </div>
 
@@ -107,7 +79,6 @@
         let deviceFingerprint = localStorage.getItem('sq_fingerprint') || generateFingerprint();
         let ws = null;
 
-        // Generar fingerprint del dispositivo
         function generateFingerprint() {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -120,57 +91,38 @@
             return hash;
         }
 
-        // Obtener venue_id de la URL (join/:token o ?venue=:id)
         function getVenueId() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get('venue');
+            return new URLSearchParams(window.location.search).get('venue');
         }
 
         async function init() {
             venueId = getVenueId();
             if (!venueId) {
-                document.getElementById('venue-name').textContent = 'Error: No se especificó un local';
+                document.getElementById('venue-name').textContent = 'Error: No se especifico un local';
                 return;
             }
-
-            document.getElementById('fingerprint-display').textContent = `Device: ${deviceFingerprint}`;
-
-            // Cargar info del local
+            document.getElementById('fingerprint-display').textContent = 'Device: ' + deviceFingerprint;
             try {
                 const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`);
                 const venue = await res.json();
                 document.getElementById('venue-name').textContent = venue.name;
-            } catch (e) {
-                console.error(e);
-            }
-
-            // Cargar cola inicial
+            } catch (e) { console.error(e); }
             loadQueue();
-
-            // Conectar WebSocket
             connectWebSocket();
         }
 
         function connectWebSocket() {
             const wsUrl = API_URL.replace('http', 'ws') + `/ws/venue/${venueId}`;
             ws = new WebSocket(wsUrl);
-
             ws.onopen = () => {
                 ws.send(JSON.stringify({ action: 'register', role: 'client', device_id: deviceFingerprint }));
             };
-
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
-                if (msg.type === 'queue_updated') {
-                    renderQueue(msg.data);
-                } else if (msg.type === 'now_playing') {
-                    loadQueue();
-                }
+                if (msg.type === 'queue_updated') renderQueue(msg.data);
+                else if (msg.type === 'now_playing') loadQueue();
             };
-
-            ws.onclose = () => {
-                setTimeout(connectWebSocket, 3000);
-            };
+            ws.onclose = () => setTimeout(connectWebSocket, 3000);
         }
 
         async function searchSongs() {
@@ -180,38 +132,58 @@
             const btn = document.getElementById('search-btn');
             btn.disabled = true;
             btn.textContent = 'Buscando...';
+            document.getElementById('search-results').innerHTML = '<div class="loading">Buscando en YouTube...</div>';
 
             try {
                 const res = await fetch(`${API_URL}/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=10`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    showMessage('Error: ' + (err.detail || 'No se pudieron buscar canciones'), 'error');
+                    document.getElementById('search-results').innerHTML = '';
+                    return;
+                }
                 const songs = await res.json();
-                renderSearchResults(songs);
+                if (!songs || songs.length === 0) {
+                    document.getElementById('search-results').innerHTML = '<div class="empty">No se encontraron resultados para <b>"' + escapeHtml(query) + '"</b>. Intenta con otra busqueda.</div>';
+                    return;
+                }
+                renderSearchResults(songs, query);
             } catch (e) {
-                showMessage('Error al buscar', 'error');
+                showMessage('Error de conexion al buscar', 'error');
+                document.getElementById('search-results').innerHTML = '';
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Buscar';
             }
         }
 
-        function renderSearchResults(songs) {
+        function renderSearchResults(songs, query) {
             const container = document.getElementById('search-results');
-            if (!songs.length) {
-                container.innerHTML = '<div class="empty">No se encontraron resultados</div>';
-                return;
+            const isDemo = songs.length > 0 && !songs.some(s =>
+                s.title.toLowerCase().includes(query.toLowerCase()) ||
+                s.channel.toLowerCase().includes(query.toLowerCase())
+            );
+
+            let html = '';
+            if (isDemo) {
+                html += '<div class="info-msg">Modo demo activo: la API de YouTube no responde. Mostrando resultados de ejemplo.</div>';
             }
-            container.innerHTML = songs.map(song => `
+
+            html += songs.map(song => `
                 <div class="song-card">
-                    <img src="${song.thumbnail_url}" alt="">
+                    <img src="${song.thumbnail_url || 'https://via.placeholder.com/96x72?text=No+Img'}" alt="" onerror="this.src='https://via.placeholder.com/96x72?text=No+Img'">
                     <div class="song-info">
-                        <h3>${escapeHtml(song.title)}</h3>
-                        <p>${escapeHtml(song.channel)}</p>
+                        <h3>${escapeHtml(song.title)} ${song.title.toLowerCase().includes(query.toLowerCase()) || song.channel.toLowerCase().includes(query.toLowerCase()) ? '' : '<span class="demo-badge">demo</span>'}</h3>
+                        <p>${escapeHtml(song.channel || 'Unknown')}</p>
                     </div>
-                    <button class="add-btn" onclick="addToQueue('${song.youtube_id}', this)">Agregar</button>
+                    <button class="add-btn" onclick="addToQueue('${song.youtube_id}', '${escapeHtml(song.title).replace(/'/g, "\\'")}', '${escapeHtml(song.channel || '').replace(/'/g, "\\'")}', '${(song.thumbnail_url || '').replace(/'/g, "\\'")}', ${song.duration_seconds || 'null'}, this)">Agregar</button>
                 </div>
             `).join('');
+
+            container.innerHTML = html;
         }
 
-        async function addToQueue(youtubeId, btn) {
+        async function addToQueue(youtubeId, title, channel, thumbnailUrl, durationSeconds, btn) {
             btn.disabled = true;
             btn.textContent = '...';
 
@@ -223,20 +195,24 @@
                         youtube_id: youtubeId,
                         device_fingerprint: deviceFingerprint,
                         requested_by: 'Cliente',
+                        title: title,
+                        channel: channel,
+                        thumbnail_url: thumbnailUrl,
+                        duration_seconds: durationSeconds,
                     }),
                 });
 
                 if (res.ok) {
-                    showMessage('✅ Canción agregada a la cola', 'success');
+                    showMessage('Cancion agregada a la cola', 'success');
                     document.getElementById('search-results').innerHTML = '';
                     document.getElementById('search-input').value = '';
                     loadQueue();
                 } else {
                     const err = await res.json();
-                    showMessage('❌ ' + (err.detail || 'Error'), 'error');
+                    showMessage(err.detail || 'Error al agregar', 'error');
                 }
             } catch (e) {
-                showMessage('Error de conexión', 'error');
+                showMessage('Error de conexion', 'error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Agregar';
@@ -248,27 +224,15 @@
                 const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`);
                 const data = await res.json();
                 renderQueue(data);
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function renderQueue(data) {
             const container = document.getElementById('queue-list');
             let html = '';
-
-            if (data.now_playing) {
-                html += renderQueueItem(data.now_playing, 0, true);
-            }
-
-            if (data.upcoming && data.upcoming.length) {
-                html += data.upcoming.map((item, idx) => renderQueueItem(item, idx + 1, false)).join('');
-            }
-
-            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) {
-                html = '<div class="empty">La cola está vacía. ¡Sé el primero en agregar una canción!</div>';
-            }
-
+            if (data.now_playing) html += renderQueueItem(data.now_playing, 0, true);
+            if (data.upcoming && data.upcoming.length) html += data.upcoming.map((q, i) => renderQueueItem(q, i + 1, false)).join('');
+            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div class="empty">La cola esta vacia. Se el primero en agregar una cancion!</div>';
             container.innerHTML = html;
         }
 
@@ -276,15 +240,13 @@
             const song = item.song || {};
             return `
                 <div class="queue-item ${isPlaying ? 'playing' : ''}">
-                    <div class="pos">${isPlaying ? '▶' : position}</div>
-                    <img src="${song.thumbnail_url || ''}" alt="">
+                    <div class="pos">${isPlaying ? '&#9654;' : position}</div>
+                    <img src="${song.thumbnail_url || ''}" alt="" onerror="this.style.display='none'">
                     <div class="queue-info">
                         <h4>${escapeHtml(song.title || 'Desconocido')}</h4>
                         <p>${escapeHtml(song.channel || '')} ${item.requested_by ? '• Pedido por: ' + escapeHtml(item.requested_by) : ''}</p>
                     </div>
-                    <span class="status-badge ${isPlaying ? 'status-playing' : 'status-pending'}">
-                        ${isPlaying ? 'Reproduciendo' : 'En cola'}
-                    </span>
+                    <span class="status-badge ${isPlaying ? 'status-playing' : 'status-pending'}">${isPlaying ? 'Reproduciendo' : 'En cola'}</span>
                 </div>
             `;
         }

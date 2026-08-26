@@ -41,6 +41,7 @@ class Venue(Base):
     # Relaciones
     queue_items = relationship("QueueItem", back_populates="venue", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="venue", cascade="all, delete-orphan")
+    playlists = relationship("Playlist", back_populates="venue", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Venue(id={self.id}, name='{self.name}', slug='{self.slug}')>"

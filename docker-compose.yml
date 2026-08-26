@@ -1,44 +1,58 @@
-version: "3.9"
-
 services:
   db:
     image: mysql:8.0
     container_name: songqueue_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
-      MYSQL_DATABASE: ${DB_NAME:-songqueue}
-      MYSQL_USER: ${DB_USER:-songqueue}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-songqueue_pass}
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: songqueue
+      MYSQL_USER: songqueue
+      MYSQL_PASSWORD: songqueue_pass
     ports:
-      - "${DB_PORT:-3306}:3306"
+      - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 3s
       timeout: 5s
-      retries: 5
+      retries: 20
+      start_period: 10s
+
+  nginx:
+    image: nginx:alpine
+    container_name: songqueue_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - app
 
   app:
     build: .
     container_name: songqueue_api
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "8000:8000"
     environment:
-      - DATABASE_URL=mysql+aiomysql://${DB_USER:-songqueue}:${DB_PASSWORD:-songqueue_pass}@db:3306/${DB_NAME:-songqueue}
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
-      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=songqueue
+      - DB_USER=songqueue
+      - DB_PASSWORD=songqueue_pass
+      - DATABASE_URL=mysql+aiomysql://songqueue:songqueue_pass@db:3306/songqueue
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production-use-openssl-rand-hex-32}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-AIzaSyBoY8w7ckROl4uPmoptD2x5DDJBEf0inRU}
       - DEBUG=false
       - HOST=0.0.0.0
       - PORT=8000
+      - SERVER_BASE_URL=${SERVER_BASE_URL:-http://192.168.1.7}
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./frontend:/app/frontend:ro
 
 volumes:
   mysql_data:

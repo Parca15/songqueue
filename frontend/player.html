@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; overflow: hidden; }
         #player-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-        #youtube-player { width: 100%; height: 100%; }
+        #youtube-player, #html5-player { width: 100%; height: 100%; }
         .overlay { position: fixed; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 100; }
         .now-playing-info { background: rgba(0,0,0,0.7); padding: 15px 25px; border-radius: 12px; backdrop-filter: blur(10px); max-width: 500px; }
         .now-playing-info h2 { font-size: 1.2rem; margin-bottom: 5px; }
@@ -27,44 +27,210 @@
 </head>
 <body>
     <div id="connecting" class="connecting"><h1>SongQueue</h1><p>Conectando al local...</p></div>
-    <div id="player-container" class="hidden"><div id="youtube-player"></div></div>
+    <div id="player-container" class="hidden">
+        <div id="youtube-player"></div>
+        <video id="html5-player" class="hidden" playsinline></video>
+    </div>
     <div class="overlay hidden" id="overlay">
         <div class="now-playing-info"><h2 id="np-title">Esperando cancion...</h2><p id="np-channel">-</p></div>
         <div class="queue-preview"><h3>Siguientes</h3><div id="queue-preview-list"></div></div>
     </div>
     <div class="venue-badge hidden" id="venue-badge">Local desconocido</div>
     <script>
-        const API_URL = window.location.origin;
-        let venueId = new URLSearchParams(window.location.search).get('venue');
-        let ws = null, player = null, currentVideoId = null;
+        var API_URL = window.location.origin;
+        var venueId = new URLSearchParams(window.location.search).get('venue');
+        var ws = null, player = null, currentVideoId = null;
+        var stuckTimer = null, hasPlayed = false;
+        var usingHtml5 = false;
 
         function loadYouTubeAPI() {
-            const tag = document.createElement('script');
+            var tag = document.createElement('script');
             tag.src = 'https://www.youtube.com/iframe_api';
-            document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
+            document.head.appendChild(tag);
         }
+
         function onYouTubeIframeAPIReady() {
-            player = new YT.Player('youtube-player', { height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, iv_load_policy: 3 }, events: { onReady: ()=>{}, onStateChange: onPlayerStateChange } });
+            player = new YT.Player('youtube-player', {
+                height: '100%', width: '100%',
+                playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: '', hl: 'es', enablejsapi: 1 },
+                events: { onReady: function(){}, onStateChange: onPlayerStateChange, onError: onPlayerError }
+            });
         }
-        function onPlayerStateChange(e) { if (e.data === YT.PlayerState.ENDED) notifyEnded(); }
-        async function notifyEnded() { try { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/skip`, {method:'POST'}); } catch(e) {} }
+
+        var html5Player = null;
+
+        function getHtml5Player() {
+            if (!html5Player) {
+                html5Player = document.getElementById('html5-player');
+                html5Player.addEventListener('ended', function() { autoSkip(); });
+                html5Player.addEventListener('playing', function() { hasPlayed = true; clearTimeout(stuckTimer); });
+                html5Player.addEventListener('error', function() { console.log('HTML5 error, skipping...'); autoSkip(); });
+            }
+            return html5Player;
+        }
+
+        function startStuckTimer() {
+            clearTimeout(stuckTimer);
+            hasPlayed = false;
+            stuckTimer = setTimeout(function() {
+                if (!hasPlayed && currentVideoId) {
+                    console.log('YouTube stuck, trying HTML5 fallback...');
+                    tryHtml5Fallback(currentVideoId);
+                }
+            }, 6000);
+        }
+
+        function onPlayerError(e) {
+            console.log('YouTube error: ' + e.data);
+            clearTimeout(stuckTimer);
+            tryHtml5Fallback(currentVideoId);
+        }
+
+        function onPlayerStateChange(e) {
+            if (e.data === YT.PlayerState.PLAYING) {
+                hasPlayed = true;
+                clearTimeout(stuckTimer);
+            } else if (e.data === YT.PlayerState.ENDED) {
+                clearTimeout(stuckTimer);
+                autoSkip();
+            } else if (e.data === YT.PlayerState.BUFFERING && hasPlayed) {
+                clearTimeout(stuckTimer);
+            }
+        }
+
+        async function tryHtml5Fallback(videoId) {
+            if (usingHtml5) return;
+            console.log('Trying HTML5 fallback for: ' + videoId);
+            try {
+                var res = await fetch(API_URL + '/api/v1/songs/' + videoId + '/stream');
+                if (!res.ok) { autoSkip(); return; }
+                var data = await res.json();
+                if (!data.stream_url) { autoSkip(); return; }
+
+                usingHtml5 = true;
+                clearTimeout(stuckTimer);
+
+                document.getElementById('youtube-player').style.display = 'none';
+                var vid = getHtml5Player();
+                vid.classList.remove('hidden');
+                vid.src = data.stream_url;
+                vid.load();
+                vid.play().catch(function() { autoSkip(); });
+            } catch(e) {
+                console.log('HTML5 fallback failed:', e);
+                autoSkip();
+            }
+        }
+
+        function showYouTubePlayer() {
+            if (usingHtml5) {
+                usingHtml5 = false;
+                var vid = getHtml5Player();
+                vid.pause();
+                vid.classList.add('hidden');
+                vid.src = '';
+                document.getElementById('youtube-player').style.display = '';
+            }
+        }
+
+        async function autoSkip() {
+            clearTimeout(stuckTimer);
+            try {
+                await fetch(API_URL + '/api/v1/queue/venue/' + venueId + '/auto-skip', { method: 'POST' });
+            } catch(e) {}
+        }
 
         async function init() {
-            if (!venueId) { document.querySelector('.connecting p').textContent = 'Error: Especifica ?venue=ID'; return; }
-            try { const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`); const v = await res.json(); document.getElementById('venue-badge').textContent = v.name; document.getElementById('venue-badge').classList.remove('hidden'); } catch(e) {}
-            loadYouTubeAPI(); connectWebSocket();
+            if (!venueId) {
+                document.querySelector('.connecting p').textContent = 'Error: Especifica ?venue=ID';
+                return;
+            }
+            try {
+                var res = await fetch(API_URL + '/api/v1/venues/' + venueId);
+                var v = await res.json();
+                document.getElementById('venue-badge').textContent = v.name;
+                document.getElementById('venue-badge').classList.remove('hidden');
+            } catch(e) {}
+            loadYouTubeAPI();
+            connectWebSocket();
         }
+
         function connectWebSocket() {
-            const wsUrl = API_URL.replace('http','ws') + `/ws/venue/${venueId}`;
+            var wsUrl = API_URL.replace('http', 'ws') + '/ws/venue/' + venueId;
             ws = new WebSocket(wsUrl);
-            ws.onopen = () => { ws.send(JSON.stringify({action:'register',role:'player'})); document.getElementById('connecting').classList.add('hidden'); document.getElementById('player-container').classList.remove('hidden'); document.getElementById('overlay').classList.remove('hidden'); loadCurrentQueue(); };
-            ws.onmessage = (e) => { const msg = JSON.parse(e.data); if (msg.type === 'play_song') playSong(msg.data); else if (msg.type === 'queue_updated') updatePreview(msg.data); else if (msg.type === 'player_command') handleCmd(msg.command); };
-            ws.onclose = () => setTimeout(connectWebSocket, 3000);
+            ws.onopen = function() {
+                ws.send(JSON.stringify({action: 'register', role: 'player'}));
+                document.getElementById('connecting').classList.add('hidden');
+                document.getElementById('player-container').classList.remove('hidden');
+                document.getElementById('overlay').classList.remove('hidden');
+                loadCurrentQueue();
+            };
+            ws.onmessage = function(e) {
+                var msg = JSON.parse(e.data);
+                if (msg.type === 'play_song') playSong(msg.data);
+                else if (msg.type === 'queue_updated') updatePreview(msg.data);
+                else if (msg.type === 'player_command') handleCmd(msg.command);
+            };
+            ws.onclose = function() { setTimeout(connectWebSocket, 3000); };
         }
-        async function loadCurrentQueue() { try { const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`); const data = await res.json(); if (data.now_playing) playSong(data.now_playing); updatePreview(data); } catch(e) {} }
-        function playSong(item) { const s = item.song || {}; const vid = s.youtube_id; if (!vid) return; if (vid !== currentVideoId) { currentVideoId = vid; if (player && player.loadVideoById) player.loadVideoById(vid); } document.getElementById('np-title').textContent = s.title || 'Desconocido'; document.getElementById('np-channel').textContent = s.channel || '-'; }
-        function updatePreview(data) { const c = document.getElementById('queue-preview-list'); if (!data.upcoming || !data.upcoming.length) { c.innerHTML = '<div style="color:#666;font-size:0.8rem;">Sin canciones pendientes</div>'; return; } c.innerHTML = data.upcoming.slice(0,5).map(it => { const s = it.song || {}; return `<div class="queue-preview-item"><img src="${s.thumbnail_url||''}" alt=""><span>${(s.title||'Desconocido').substring(0,30)}...</span></div>`; }).join(''); }
-        function handleCmd(cmd) { if (!player) return; if (cmd === 'play') player.playVideo(); else if (cmd === 'pause') player.pauseVideo(); else if (cmd === 'skip') player.stopVideo(); }
+
+        async function loadCurrentQueue() {
+            try {
+                var res = await fetch(API_URL + '/api/v1/queue/venue/' + venueId);
+                var data = await res.json();
+                if (data.now_playing) playSong(data.now_playing);
+                updatePreview(data);
+            } catch(e) {}
+        }
+
+        function playSong(item) {
+            var s = item.song || {};
+            var vid = s.youtube_id;
+            if (!vid) return;
+            if (vid !== currentVideoId) {
+                currentVideoId = vid;
+                hasPlayed = false;
+                showYouTubePlayer();
+                clearTimeout(stuckTimer);
+                if (player && player.loadVideoById) {
+                    player.loadVideoById(vid);
+                    startStuckTimer();
+                } else {
+                    tryHtml5Fallback(vid);
+                }
+            }
+            document.getElementById('np-title').textContent = s.title || 'Desconocido';
+            document.getElementById('np-channel').textContent = s.channel || '-';
+        }
+
+        function updatePreview(data) {
+            var c = document.getElementById('queue-preview-list');
+            if (!data.upcoming || !data.upcoming.length) {
+                c.innerHTML = '<div style="color:#666;font-size:0.8rem;">Sin canciones pendientes</div>';
+                return;
+            }
+            c.innerHTML = data.upcoming.slice(0,5).map(function(it) {
+                var s = it.song || {};
+                return '<div class="queue-preview-item"><img src="' + (s.thumbnail_url||'') + '" alt=""><span>' + (s.title||'Desconocido').substring(0,30) + '...</span></div>';
+            }).join('');
+        }
+
+        function handleCmd(cmd) {
+            clearTimeout(stuckTimer);
+            if (cmd === 'skip') {
+                if (usingHtml5) { getHtml5Player().pause(); getHtml5Player().src = ''; }
+                else if (player && player.stopVideo) player.stopVideo();
+                return;
+            }
+            if (usingHtml5) {
+                if (cmd === 'play') getHtml5Player().play();
+                else if (cmd === 'pause') getHtml5Player().pause();
+            } else if (player) {
+                if (cmd === 'play') player.playVideo();
+                else if (cmd === 'pause') player.pauseVideo();
+            }
+        }
+
         init();
     </script>
 </body>

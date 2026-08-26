@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+mysql_data
+tests
+.DS_Store
+.github
+README.md
+Makefile
+deploy/
+docker-compose.yml

@@ -19,7 +19,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    """Genera un hash bcrypt de un password."""
+    """Genera un hash bcrypt de un password. Trunca a 72 bytes si es necesario."""
+    # bcrypt tiene un limite de 72 bytes
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) > 71:
+        password = password_bytes[:71].decode("utf-8", errors="ignore")
     return pwd_context.hash(password)
 
 
@@ -32,7 +36,7 @@ def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = 
 
 
 def decode_access_token(token: str) -> dict[str, Any] | None:
-    """Decodifica y valida un JWT token. Retorna None si es inválido."""
+    """Decodifica y valida un JWT token. Retorna None si es invalido."""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         return payload

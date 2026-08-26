@@ -1,5 +1,5 @@
 """
-Router de autenticación para administradores de locales.
+Router de autenticacion para administradores de locales.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +9,7 @@ from src.database import get_db
 from src.models.venue import Venue
 from src.schemas.auth import AdminLogin, TokenResponse
 from src.utils.security import verify_password, create_access_token
+from src.utils.auth import get_current_admin
 
 router = APIRouter()
 
@@ -30,13 +31,13 @@ async def admin_login(
     if not venue or not venue.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos",
+            detail="Usuario o contrasena incorrectos",
         )
 
     if not verify_password(credentials.password, venue.admin_password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario o contraseña incorrectos",
+            detail="Usuario o contrasena incorrectos",
         )
 
     access_token = create_access_token(data={"sub": str(venue.id)})
@@ -46,3 +47,18 @@ async def admin_login(
         venue_id=venue.id,
         venue_name=venue.name,
     )
+
+
+@router.post("/logout")
+async def admin_logout(
+    current_admin: Venue = Depends(get_current_admin),
+):
+    """
+    Logout de administrador.
+    El cliente debe eliminar el token del localStorage.
+    """
+    return {
+        "message": "Logout exitoso",
+        "venue_id": current_admin.id,
+        "venue_name": current_admin.name,
+    }

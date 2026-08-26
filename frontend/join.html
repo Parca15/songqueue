@@ -3,146 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unirse a la Cola - SongQueue</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <title>SongQueue - Unirse</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
+        .container { max-width: 720px; margin: 0 auto; padding: 24px; }
+        header { text-align: center; padding: 36px 0; border-bottom: 1px solid #333; margin-bottom: 24px; }
+        header h1 { font-size: 2.4rem; margin-bottom: 10px; }
+        header p { color: #888; font-size: 1.1rem; }
+        .search-box { display: flex; gap: 12px; margin-bottom: 24px; }
+        .search-box input { flex: 1; padding: 16px 20px; border-radius: 14px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 18px; outline: none; }
+        .search-box input:focus { border-color: #e91e63; }
+        .search-box button { padding: 16px 28px; border-radius: 14px; border: none; background: #e91e63; color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; }
+        .search-box button:hover { background: #c2185b; }
+        .results { display: flex; flex-direction: column; gap: 12px; }
+        .song-card { display: flex; align-items: center; gap: 16px; padding: 14px; border-radius: 14px; background: #1a1a1a; border: 1px solid #333; }
+        .song-card img { width: 96px; height: 72px; border-radius: 10px; object-fit: cover; }
+        .song-info { flex: 1; }
+        .song-info h3 { font-size: 16px; margin-bottom: 6px; line-height: 1.3; }
+        .song-info p { font-size: 14px; color: #888; }
+        .song-card .add-btn { padding: 10px 20px; border-radius: 10px; border: none; background: #4caf50; color: #fff; font-size: 15px; cursor: pointer; font-weight: 600; }
+        .song-card .add-btn:hover { background: #45a049; }
+        .queue-section { margin-top: 36px; }
+        .queue-section h2 { font-size: 1.4rem; margin-bottom: 18px; }
+        .queue-item { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 12px; background: #1a1a1a; border: 1px solid #333; margin-bottom: 10px; }
+        .queue-item.playing { border-color: #e91e63; background: #2a1a1a; }
+        .queue-item img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
+        .queue-item .pos { width: 34px; height: 34px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+        .queue-item.playing .pos { background: #e91e63; }
+        .queue-info { flex: 1; }
+        .queue-info h4 { font-size: 15px; margin-bottom: 4px; }
+        .queue-info p { font-size: 13px; color: #888; }
+        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+        .status-playing { background: #e91e63; }
+        .status-pending { background: #333; color: #aaa; }
+        .empty { text-align: center; color: #666; padding: 48px; font-size: 16px; }
+        .error { background: #3a1a1a; color: #ff6b6b; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
+        .success { background: #1a3a1a; color: #6bff6b; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
+        .loading { text-align: center; color: #888; padding: 24px; font-size: 16px; }
+        .fingerprint { font-size: 12px; color: #444; text-align: center; margin-top: 24px; }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🎵 <span id="venue-name">Cargando...</span></h1>
-            <p id="venue-desc"></p>
+            <h1>SongQueue</h1>
+            <p id="venue-name">Cargando local...</p>
         </header>
 
-        <main>
-            <!-- Buscador -->
-            <section class="search-section">
-                <input type="text" id="search-input" placeholder="Buscar canción en YouTube..." autocomplete="off">
-                <button id="search-btn" class="btn btn-primary">🔍 Buscar</button>
-            </section>
+        <div id="message"></div>
 
-            <div id="search-results" class="results-grid"></div>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Buscar cancion en YouTube..." onkeypress="if(event.key==='Enter') searchSongs()">
+            <button id="search-btn" onclick="searchSongs()">Buscar</button>
+        </div>
 
-            <!-- Cola actual -->
-            <section class="queue-section">
-                <h2>📋 Cola Actual</h2>
-                <div id="now-playing" class="now-playing"></div>
-                <ul id="queue-list" class="queue-list"></ul>
-                <p id="queue-empty" class="empty-msg">No hay canciones en la cola</p>
-            </section>
-        </main>
+        <div id="search-results" class="results"></div>
 
-        <footer>
-            <p>Conectado como <span id="device-id">...</span></p>
-        </footer>
+        <div class="queue-section">
+            <h2>Cola Actual</h2>
+            <div id="queue-list"></div>
+        </div>
+
+        <div class="fingerprint" id="fingerprint-display"></div>
     </div>
 
-    <script src="/static/app.js"></script>
     <script>
-        // Inicializar página de join
-        (async function() {
+        const API_URL = window.location.origin;
+        let venueId = null;
+        let deviceFingerprint = localStorage.getItem('sq_fingerprint') || generateFingerprint();
+        let ws = null;
+
+        function generateFingerprint() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillText('SongQueue fingerprint', 2, 2);
+            const fp = canvas.toDataURL() + navigator.userAgent + screen.width + screen.height;
+            const hash = btoa(fp).substring(0, 32);
+            localStorage.setItem('sq_fingerprint', hash);
+            return hash;
+        }
+
+        async function init() {
             const pathParts = window.location.pathname.split('/');
             const qrToken = pathParts[pathParts.length - 1];
 
-            // Obtener info del local por QR token
-            const resp = await fetch(`/api/v1/venues/token/${qrToken}`);
-            if (!resp.ok) {
-                document.body.innerHTML = '<div class="error">Local no encontrado o inactivo</div>';
-                return;
-            }
-            const venue = await resp.json();
-            window.CURRENT_VENUE = venue;
-            document.getElementById('venue-name').textContent = venue.name;
-            document.getElementById('venue-desc').textContent = venue.description || '';
-
-            // Generar device fingerprint
-            const fp = await generateFingerprint();
-            window.DEVICE_FINGERPRINT = fp;
-            document.getElementById('device-id').textContent = fp.substring(0, 16) + '...';
-
-            // Conectar WebSocket
-            connectWebSocket(venue.id, 'client', fp);
-
-            // Cargar cola inicial
-            loadQueue(venue.id);
-
-            // Setup búsqueda
-            const searchInput = document.getElementById('search-input');
-            const searchBtn = document.getElementById('search-btn');
-
-            searchBtn.addEventListener('click', () => doSearch(searchInput.value));
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') doSearch(searchInput.value);
-            });
-        })();
-
-        async function doSearch(query) {
-            if (!query.trim()) return;
-            const resultsDiv = document.getElementById('search-results');
-            resultsDiv.innerHTML = '<p class="loading">Buscando...</p>';
-
             try {
-                const resp = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=8`);
-                const results = await resp.json();
-                renderSearchResults(results);
+                const res = await fetch(`${API_URL}/api/v1/venues/token/${qrToken}`);
+                if (!res.ok) {
+                    document.getElementById('venue-name').textContent = 'Local no encontrado';
+                    return;
+                }
+                const venue = await res.json();
+                venueId = venue.id;
+                document.getElementById('venue-name').textContent = venue.name;
+                document.getElementById('fingerprint-display').textContent = 'Device: ' + deviceFingerprint;
+                loadQueue();
+                connectWebSocket();
             } catch (e) {
-                resultsDiv.innerHTML = '<p class="error">Error al buscar. Intenta de nuevo.</p>';
+                document.getElementById('venue-name').textContent = 'Error de conexion';
             }
         }
 
-        function renderSearchResults(results) {
-            const div = document.getElementById('search-results');
-            if (!results.length) {
-                div.innerHTML = '<p class="empty-msg">No se encontraron resultados</p>';
-                return;
+        function connectWebSocket() {
+            const wsUrl = API_URL.replace('http', 'ws') + `/ws/venue/${venueId}`;
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ action: 'register', role: 'client', device_id: deviceFingerprint }));
+            };
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'queue_updated') renderQueue(msg.data);
+                else if (msg.type === 'now_playing') loadQueue();
+            };
+            ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        }
+
+        async function searchSongs() {
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) return;
+
+            const btn = document.getElementById('search-btn');
+            btn.disabled = true;
+            btn.textContent = 'Buscando...';
+            document.getElementById('search-results').innerHTML = '<div class="loading">Buscando en YouTube...</div>';
+
+            try {
+                const res = await fetch(`${API_URL}/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=10`);
+                if (!res.ok) {
+                    document.getElementById('search-results').innerHTML = '<div class="error">Error al buscar</div>';
+                    return;
+                }
+                const songs = await res.json();
+                if (!songs || songs.length === 0) {
+                    document.getElementById('search-results').innerHTML = '<div class="empty">Sin resultados para "' + escapeHtml(query) + '"</div>';
+                    return;
+                }
+                renderSearchResults(songs);
+            } catch (e) {
+                document.getElementById('search-results').innerHTML = '<div class="error">Error de conexion</div>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Buscar';
             }
-            div.innerHTML = results.map(song => `
-                <div class="song-card" data-youtube-id="${song.youtube_id}">
-                    <img src="${song.thumbnail_url}" alt="${song.title}">
+        }
+
+        function renderSearchResults(songs) {
+            const container = document.getElementById('search-results');
+            container.innerHTML = songs.map(song => `
+                <div class="song-card">
+                    <img src="${song.thumbnail_url || ''}" alt="" onerror="this.style.display='none'">
                     <div class="song-info">
-                        <h4>${escapeHtml(song.title)}</h4>
-                        <p>${escapeHtml(song.channel)}</p>
+                        <h3>${escapeHtml(song.title)}</h3>
+                        <p>${escapeHtml(song.channel || '')}</p>
                     </div>
-                    <button class="btn btn-add" onclick="addToQueue('${song.youtube_id}', '${escapeHtml(song.title).replace(/'/g, "\'")}')">➕ Agregar</button>
+                    <button class="add-btn" onclick="addToQueue('${song.youtube_id}', '${escapeHtml(song.title).replace(/'/g, "\\'")}', '${escapeHtml(song.channel || '').replace(/'/g, "\\'")}', '${(song.thumbnail_url || '').replace(/'/g, "\\'")}', ${song.duration_seconds || 'null'}, this)">Agregar</button>
                 </div>
             `).join('');
         }
 
-        async function addToQueue(youtubeId, title) {
-            const venue = window.CURRENT_VENUE;
-            const fp = window.DEVICE_FINGERPRINT;
-            const requestedBy = prompt('¿Tu nombre? (opcional)') || 'Anónimo';
-
+        async function addToQueue(youtubeId, title, channel, thumbnailUrl, durationSeconds, btn) {
+            btn.disabled = true;
+            btn.textContent = '...';
             try {
-                const resp = await fetch(`/api/v1/queue/venue/${venue.id}/add`, {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         youtube_id: youtubeId,
-                        requested_by: requestedBy,
-                        device_fingerprint: fp,
+                        device_fingerprint: deviceFingerprint,
+                        requested_by: 'Cliente',
+                        title: title,
+                        channel: channel,
+                        thumbnail_url: thumbnailUrl,
+                        duration_seconds: durationSeconds,
                     }),
                 });
 
-                if (resp.status === 429) {
-                    alert(`⚠️ Límite alcanzado: máximo ${venue.max_songs_per_device} canciones por dispositivo.`);
-                    return;
+                if (res.ok) {
+                    showMessage('Cancion agregada a la cola', 'success');
+                    document.getElementById('search-results').innerHTML = '';
+                    document.getElementById('search-input').value = '';
+                    loadQueue();
+                } else {
+                    const err = await res.json();
+                    showMessage(err.detail || 'Error al agregar', 'error');
                 }
-                if (resp.status === 409) {
-                    alert('⚠️ Esta canción ya está en la cola.');
-                    return;
-                }
-                if (!resp.ok) {
-                    alert('Error al agregar la canción.');
-                    return;
-                }
-
-                alert(`✅ "${title}" agregada a la cola!`);
-                document.getElementById('search-results').innerHTML = '';
-                document.getElementById('search-input').value = '';
             } catch (e) {
-                alert('Error de conexión.');
+                showMessage('Error de conexion', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Agregar';
             }
         }
+
+        async function loadQueue() {
+            if (!venueId) return;
+            try {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`);
+                const data = await res.json();
+                renderQueue(data);
+            } catch (e) {}
+        }
+
+        function renderQueue(data) {
+            const container = document.getElementById('queue-list');
+            let html = '';
+            if (data.now_playing) html += renderQueueItem(data.now_playing, 0, true);
+            if (data.upcoming && data.upcoming.length) html += data.upcoming.map((q, i) => renderQueueItem(q, i + 1, false)).join('');
+            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div class="empty">La cola esta vacia. Se el primero!</div>';
+            container.innerHTML = html;
+        }
+
+        function renderQueueItem(item, position, isPlaying) {
+            const song = item.song || {};
+            return `
+                <div class="queue-item ${isPlaying ? 'playing' : ''}">
+                    <div class="pos">${isPlaying ? '&#9654;' : position}</div>
+                    <img src="${song.thumbnail_url || ''}" alt="" onerror="this.style.display='none'">
+                    <div class="queue-info">
+                        <h4>${escapeHtml(song.title || 'Desconocido')}</h4>
+                        <p>${escapeHtml(song.channel || '')} ${item.requested_by ? '- Pedido por: ' + escapeHtml(item.requested_by) : ''}</p>
+                    </div>
+                    <span class="status-badge ${isPlaying ? 'status-playing' : 'status-pending'}">${isPlaying ? 'Reproduciendo' : 'En cola'}</span>
+                </div>
+            `;
+        }
+
+        function showMessage(text, type) {
+            const el = document.getElementById('message');
+            el.innerHTML = `<div class="${type}">${text}</div>`;
+            setTimeout(() => el.innerHTML = '', 4000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        init();
     </script>
 </body>
 </html>

@@ -8,7 +8,7 @@ from sqlalchemy import select
 from src.database import get_db
 from src.models.song import Song
 from src.schemas.song import SongCreate, SongResponse, YouTubeSearchResult
-from src.services.youtube_service import search_youtube, get_video_details
+from src.services.youtube_service import search_youtube, get_video_details, get_stream_url
 
 router = APIRouter()
 
@@ -48,6 +48,15 @@ async def create_song(
     await db.commit()
     await db.refresh(song)
     return song
+
+
+@router.get("/{youtube_id}/stream")
+async def get_video_stream(youtube_id: str):
+    """Obtiene la URL directa del stream para reproducir con HTML5 video."""
+    url = await get_stream_url(youtube_id)
+    if not url:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se pudo obtener la URL del video")
+    return {"stream_url": url}
 
 
 @router.get("/{song_id}", response_model=SongResponse)
