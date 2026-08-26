@@ -5,10 +5,9 @@ Ejecutar: python seed_data.py
 import asyncio
 from datetime import datetime
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import AsyncSessionLocal, engine, init_db
+from src.database import AsyncSessionLocal, init_db
 from src.models.venue import Venue
 from src.models.song import Song
 from src.models.queue_item import QueueItem, QueueStatus
@@ -17,11 +16,6 @@ from src.utils.security import get_password_hash
 
 async def seed_venues(db: AsyncSession) -> list[Venue]:
     """Crea locales de prueba."""
-    existing = (await db.execute(select(Venue))).scalars().all()
-    if existing:
-        print(f"⚠️ Ya existen {len(existing)} locales. Se reutilizan los datos existentes.")
-        return list(existing)
-
     venues_data = [
         {
             "name": "Bar La Esquina",
@@ -70,11 +64,6 @@ async def seed_venues(db: AsyncSession) -> list[Venue]:
 
 async def seed_songs(db: AsyncSession) -> list[Song]:
     """Crea canciones de prueba (videos populares de YouTube)."""
-    existing = (await db.execute(select(Song))).scalars().all()
-    if existing:
-        print(f"⚠️ Ya existen {len(existing)} canciones. Se reutilizan los datos existentes.")
-        return list(existing)
-
     songs_data = [
         {
             "youtube_id": "dQw4w9WgXcQ",
@@ -128,11 +117,6 @@ async def seed_songs(db: AsyncSession) -> list[Song]:
 
 async def seed_queue(db: AsyncSession, venues: list[Venue], songs: list[Song]) -> None:
     """Crea items de cola de prueba."""
-    existing = (await db.execute(select(QueueItem))).scalars().all()
-    if existing:
-        print(f"⚠️ Ya existen {len(existing)} items en cola. Se reutilizan los datos existentes.")
-        return
-
     queue_items = [
         {
             "venue_id": venues[0].id,
@@ -188,16 +172,13 @@ async def main() -> None:
     """Ejecuta el seeding completo."""
     print("🌱 Iniciando seed de datos...")
 
-    try:
-        async with AsyncSessionLocal() as db:
-            # Crear tablas si no existen (modo dev)
-            await init_db()
+    async with AsyncSessionLocal() as db:
+        # Crear tablas si no existen (modo dev)
+        await init_db()
 
-            venues = await seed_venues(db)
-            songs = await seed_songs(db)
-            await seed_queue(db, venues, songs)
-    finally:
-        await engine.dispose()
+        venues = await seed_venues(db)
+        songs = await seed_songs(db)
+        await seed_queue(db, venues, songs)
 
     print("🎉 Seed completado exitosamente!")
     print("\n📋 Datos de prueba:")

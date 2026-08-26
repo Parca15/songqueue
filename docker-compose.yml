@@ -21,20 +21,24 @@ services:
       timeout: 5s
       retries: 5
 
-  # TODO: Activar en Etapa 5 - Dockerización completa
-  # app:
-  #   build: .
-  #   container_name: songqueue_api
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8000:8000"
-  #   environment:
-  #     - DATABASE_URL=mysql+aiomysql://${DB_USER:-songqueue}:${DB_PASSWORD:-songqueue_pass}@db:3306/${DB_NAME:-songqueue}
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   volumes:
-  #     - .:/app
+  app:
+    build: .
+    container_name: songqueue_api
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=mysql+aiomysql://${DB_USER:-songqueue}:${DB_PASSWORD:-songqueue_pass}@db:3306/${DB_NAME:-songqueue}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - DEBUG=false
+      - HOST=0.0.0.0
+      - PORT=8000
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app/frontend:ro
 
 volumes:
   mysql_data:

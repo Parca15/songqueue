@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SongQueue - Reproductor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; overflow: hidden; }
+        #player-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+        #youtube-player { width: 100%; height: 100%; }
+        .overlay { position: fixed; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 100; }
+        .now-playing-info { background: rgba(0,0,0,0.7); padding: 15px 25px; border-radius: 12px; backdrop-filter: blur(10px); max-width: 500px; }
+        .now-playing-info h2 { font-size: 1.2rem; margin-bottom: 5px; }
+        .now-playing-info p { font-size: 0.9rem; color: #aaa; }
+        .queue-preview { background: rgba(0,0,0,0.7); padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); min-width: 250px; }
+        .queue-preview h3 { font-size: 0.9rem; margin-bottom: 10px; color: #e91e63; }
+        .queue-preview-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.8rem; }
+        .queue-preview-item img { width: 40px; height: 30px; border-radius: 4px; object-fit: cover; }
+        .queue-preview-item span { color: #ccc; }
+        .venue-badge { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; color: #888; }
+        .connecting { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; z-index: 200; }
+        .connecting h1 { font-size: 2rem; margin-bottom: 10px; }
+        .connecting p { color: #888; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="connecting" class="connecting"><h1>SongQueue</h1><p>Conectando al local...</p></div>
+    <div id="player-container" class="hidden"><div id="youtube-player"></div></div>
+    <div class="overlay hidden" id="overlay">
+        <div class="now-playing-info"><h2 id="np-title">Esperando cancion...</h2><p id="np-channel">-</p></div>
+        <div class="queue-preview"><h3>Siguientes</h3><div id="queue-preview-list"></div></div>
+    </div>
+    <div class="venue-badge hidden" id="venue-badge">Local desconocido</div>
+    <script>
+        const API_URL = window.location.origin;
+        let venueId = new URLSearchParams(window.location.search).get('venue');
+        let ws = null, player = null, currentVideoId = null;
+
+        function loadYouTubeAPI() {
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            document.getElementsByTagName('script')[0].parentNode.insertBefore(tag, document.getElementsByTagName('script')[0]);
+        }
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', { height: '100%', width: '100%', playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, iv_load_policy: 3 }, events: { onReady: ()=>{}, onStateChange: onPlayerStateChange } });
+        }
+        function onPlayerStateChange(e) { if (e.data === YT.PlayerState.ENDED) notifyEnded(); }
+        async function notifyEnded() { try { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/skip`, {method:'POST'}); } catch(e) {} }
+
+        async function init() {
+            if (!venueId) { document.querySelector('.connecting p').textContent = 'Error: Especifica ?venue=ID'; return; }
+            try { const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`); const v = await res.json(); document.getElementById('venue-badge').textContent = v.name; document.getElementById('venue-badge').classList.remove('hidden'); } catch(e) {}
+            loadYouTubeAPI(); connectWebSocket();
+        }
+        function connectWebSocket() {
+            const wsUrl = API_URL.replace('http','ws') + `/ws/venue/${venueId}`;
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => { ws.send(JSON.stringify({action:'register',role:'player'})); document.getElementById('connecting').classList.add('hidden'); document.getElementById('player-container').classList.remove('hidden'); document.getElementById('overlay').classList.remove('hidden'); loadCurrentQueue(); };
+            ws.onmessage = (e) => { const msg = JSON.parse(e.data); if (msg.type === 'play_song') playSong(msg.data); else if (msg.type === 'queue_updated') updatePreview(msg.data); else if (msg.type === 'player_command') handleCmd(msg.command); };
+            ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        }
+        async function loadCurrentQueue() { try { const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`); const data = await res.json(); if (data.now_playing) playSong(data.now_playing); updatePreview(data); } catch(e) {} }
+        function playSong(item) { const s = item.song || {}; const vid = s.youtube_id; if (!vid) return; if (vid !== currentVideoId) { currentVideoId = vid; if (player && player.loadVideoById) player.loadVideoById(vid); } document.getElementById('np-title').textContent = s.title || 'Desconocido'; document.getElementById('np-channel').textContent = s.channel || '-'; }
+        function updatePreview(data) { const c = document.getElementById('queue-preview-list'); if (!data.upcoming || !data.upcoming.length) { c.innerHTML = '<div style="color:#666;font-size:0.8rem;">Sin canciones pendientes</div>'; return; } c.innerHTML = data.upcoming.slice(0,5).map(it => { const s = it.song || {}; return `<div class="queue-preview-item"><img src="${s.thumbnail_url||''}" alt=""><span>${(s.title||'Desconocido').substring(0,30)}...</span></div>`; }).join(''); }
+        function handleCmd(cmd) { if (!player) return; if (cmd === 'play') player.playVideo(); else if (cmd === 'pause') player.pauseVideo(); else if (cmd === 'skip') player.stopVideo(); }
+        init();
+    </script>
+</body>
+</html>

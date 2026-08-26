@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SongQueue - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        header { text-align: center; padding: 20px 0; border-bottom: 1px solid #333; margin-bottom: 20px; }
+        header h1 { font-size: 1.8rem; }
+        .login-form { max-width: 400px; margin: 60px auto; padding: 30px; background: #1a1a1a; border-radius: 16px; border: 1px solid #333; }
+        .login-form h2 { margin-bottom: 20px; text-align: center; }
+        .login-form input { width: 100%; padding: 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #333; background: #222; color: #fff; font-size: 15px; }
+        .login-form input:focus { outline: none; border-color: #e91e63; }
+        .login-form button { width: 100%; padding: 14px; border-radius: 10px; border: none; background: #e91e63; color: #fff; font-size: 16px; cursor: pointer; font-weight: 600; }
+        .login-form button:hover { background: #c2185b; }
+        .hidden { display: none !important; }
+        .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; }
+        .card h3 { font-size: 1rem; margin-bottom: 15px; color: #e91e63; }
+        .config-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
+        .config-row:last-child { border-bottom: none; }
+        .config-row label { color: #aaa; font-size: 14px; }
+        .config-row input, .config-row select { background: #222; border: 1px solid #444; color: #fff; padding: 6px 10px; border-radius: 6px; width: 120px; }
+        .config-row input[type="checkbox"] { width: auto; }
+        .btn-save { margin-top: 15px; padding: 10px 20px; border-radius: 8px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-weight: 600; }
+        .btn-save:hover { background: #45a049; }
+        .queue-admin { grid-column: 1 / -1; }
+        .queue-item-admin { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #222; margin-bottom: 8px; border: 1px solid #333; }
+        .queue-item-admin.playing { border-color: #e91e63; background: #2a1a1a; }
+        .queue-item-admin img { width: 60px; height: 45px; border-radius: 6px; object-fit: cover; }
+        .queue-item-admin .info { flex: 1; }
+        .queue-item-admin .info h4 { font-size: 13px; }
+        .queue-item-admin .info p { font-size: 11px; color: #888; }
+        .queue-item-admin .actions { display: flex; gap: 6px; }
+        .queue-item-admin .actions button { padding: 6px 12px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; }
+        .btn-play { background: #2196f3; color: #fff; }
+        .btn-skip { background: #ff9800; color: #fff; }
+        .btn-remove { background: #f44336; color: #fff; }
+        .qr-section { text-align: center; }
+        .qr-section img { max-width: 200px; margin: 10px 0; border-radius: 8px; }
+        .qr-section a { color: #e91e63; text-decoration: none; font-size: 13px; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .stat-box { background: #222; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-box .number { font-size: 1.5rem; font-weight: 700; color: #e91e63; }
+        .stat-box .label { font-size: 12px; color: #888; margin-top: 4px; }
+        .error { background: #3a1a1a; color: #ff6b6b; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+        .success { background: #1a3a1a; color: #6bff6b; padding: 12px; border-radius: 10px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SongQueue Admin</h1>
+            <p id="venue-name">Panel de administracion</p>
+        </header>
+        <div id="message"></div>
+        <div id="login-section" class="login-form">
+            <h2>Iniciar Sesion</h2>
+            <input type="text" id="username" placeholder="Usuario">
+            <input type="password" id="password" placeholder="Contrasena">
+            <button onclick="login()">Entrar</button>
+        </div>
+        <div id="admin-panel" class="panel hidden">
+            <div class="card">
+                <h3>Configuracion</h3>
+                <div class="config-row"><label>Max canciones/dispositivo</label><input type="number" id="cfg-max-songs" min="1" max="20"></div>
+                <div class="config-row"><label>Max tamano cola</label><input type="number" id="cfg-max-queue" min="5" max="200"></div>
+                <div class="config-row"><label>Permitir duplicados</label><input type="checkbox" id="cfg-duplicates"></div>
+                <div class="config-row"><label>Local activo</label><input type="checkbox" id="cfg-active"></div>
+                <button class="btn-save" onclick="saveConfig()">Guardar</button>
+            </div>
+            <div class="card qr-section">
+                <h3>Codigo QR</h3>
+                <img id="qr-image" src="" alt="QR Code"><br>
+                <a id="qr-link" href="#" target="_blank">URL del local</a>
+            </div>
+            <div class="card stats">
+                <div class="stat-box"><div class="number" id="stat-pending">0</div><div class="label">En cola</div></div>
+                <div class="stat-box"><div class="number" id="stat-played">0</div><div class="label">Reproducidas</div></div>
+                <div class="stat-box"><div class="number" id="stat-devices">0</div><div class="label">Dispositivos</div></div>
+            </div>
+            <div class="card queue-admin">
+                <h3>Gestion de Cola</h3>
+                <div style="margin-bottom:15px;"><button class="btn-skip" onclick="skipSong()">Saltar Cancion</button></div>
+                <div id="queue-list-admin"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_URL = window.location.origin;
+        let token = localStorage.getItem('sq_admin_token');
+        let venueId = null;
+        let ws = null;
+
+        async function init() {
+            venueId = new URLSearchParams(window.location.search).get('venue');
+            if (!venueId) { showMessage('Error: Especifica ?venue=ID', 'error'); return; }
+            if (token) { showPanel(); }
+        }
+        function showPanel() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            loadVenueData(); loadQueue(); connectWebSocket();
+        }
+        async function login() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/auth/login`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({username: document.getElementById('username').value, password: document.getElementById('password').value})
+                });
+                if (res.ok) { const data = await res.json(); token = data.access_token; localStorage.setItem('sq_admin_token', token); showPanel(); }
+                else { showMessage('Usuario o contrasena incorrectos', 'error'); }
+            } catch(e) { showMessage('Error de conexion', 'error'); }
+        }
+        function connectWebSocket() {
+            const wsUrl = API_URL.replace('http','ws') + `/ws/venue/${venueId}`;
+            ws = new WebSocket(wsUrl);
+            ws.onopen = () => ws.send(JSON.stringify({action:'register',role:'admin'}));
+            ws.onmessage = (e) => { const msg = JSON.parse(e.data); if (msg.type === 'queue_updated') renderQueueAdmin(msg.data); };
+            ws.onclose = () => setTimeout(connectWebSocket, 3000);
+        }
+        async function loadVenueData() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`, {headers:{'Authorization':`Bearer ${token}`}});
+                const v = await res.json(); document.getElementById('venue-name').textContent = v.name;
+                document.getElementById('cfg-max-songs').value = v.max_songs_per_device;
+                document.getElementById('cfg-max-queue').value = v.max_queue_size;
+                document.getElementById('cfg-duplicates').checked = v.allow_duplicates;
+                document.getElementById('cfg-active').checked = v.is_active;
+                const qrRes = await fetch(`${API_URL}/api/v1/venues/${venueId}/qr`, {headers:{'Authorization':`Bearer ${token}`}});
+                const qr = await qrRes.json(); document.getElementById('qr-image').src = qr.qr_base64;
+                document.getElementById('qr-link').href = qr.join_url + `?venue=${venueId}`;
+                document.getElementById('qr-link').textContent = qr.join_url;
+            } catch(e) {}
+        }
+        async function saveConfig() {
+            const updates = { max_songs_per_device: parseInt(document.getElementById('cfg-max-songs').value), max_queue_size: parseInt(document.getElementById('cfg-max-queue').value), allow_duplicates: document.getElementById('cfg-duplicates').checked, is_active: document.getElementById('cfg-active').checked };
+            try { const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`, {method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify(updates)});
+            if (res.ok) showMessage('Configuracion guardada', 'success'); else showMessage('Error', 'error'); } catch(e) {}
+        }
+        async function loadQueue() { try { const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`, {headers:{'Authorization':`Bearer ${token}`}}); renderQueueAdmin(await res.json()); } catch(e) {} }
+        function renderQueueAdmin(data) {
+            document.getElementById('stat-pending').textContent = data.total_pending || 0;
+            const container = document.getElementById('queue-list-admin'); let html = '';
+            if (data.now_playing) html += renderItem(data.now_playing, 0, true);
+            if (data.upcoming && data.upcoming.length) html += data.upcoming.map((it, i) => renderItem(it, i+1, false)).join('');
+            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div style="color:#666;padding:20px;text-align:center;">Cola vacia</div>';
+            container.innerHTML = html;
+        }
+        function renderItem(item, pos, playing) {
+            const s = item.song || {};
+            return `<div class="queue-item-admin ${playing?'playing':''}"><div style="width:28px;text-align:center;font-weight:700;">${playing?'&#9654;':pos}</div><img src="${s.thumbnail_url||''}" alt=""><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')} - ${item.requested_by||'Anonimo'}</p></div><div class="actions">${!playing?`<button class="btn-play" onclick="playItem(${item.id})">&#9654;</button>`:''}<button class="btn-remove" onclick="removeItem(${item.id})">&#10005;</button></div></div>`;
+        }
+        async function playItem(id) { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/play/${id}`, {method:'POST',headers:{'Authorization':`Bearer ${token}`}}); }
+        async function skipSong() { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/skip`, {method:'POST',headers:{'Authorization':`Bearer ${token}`}}); }
+        async function removeItem(id) { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/item/${id}`, {method:'DELETE',headers:{'Authorization':`Bearer ${token}`}}); }
+        function showMessage(text, type) { const el = document.getElementById('message'); el.innerHTML = `<div class="${type}">${text}</div>`; setTimeout(()=>el.innerHTML='',3000); }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        init();
+    </script>
+</body>
+</html>

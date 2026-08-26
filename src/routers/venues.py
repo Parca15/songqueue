@@ -13,6 +13,7 @@ from src.models.venue import Venue
 from src.schemas.venue import VenueCreate, VenueResponse, VenueConfigUpdate
 from src.utils.security import get_password_hash
 from src.utils.qr_generator import generate_venue_qr_url, qr_to_base64
+from src.utils.auth import get_current_admin
 
 router = APIRouter()
 
@@ -23,12 +24,10 @@ async def create_venue(
     db: AsyncSession = Depends(get_db),
 ) -> Venue:
     """Crea un nuevo local con configuración inicial."""
-    # Generar slug único a partir del nombre
     import re
     slug = re.sub(r"[^\w\s-]", "", venue_data.name).strip().lower()
     slug = re.sub(r"[-\s]+", "-", slug)
 
-    # Verificar slug único
     result = await db.execute(select(Venue).where(Venue.slug == slug))
     if result.scalar_one_or_none():
         raise HTTPException(
@@ -77,12 +76,20 @@ async def update_venue(
     venue_id: int,
     updates: VenueConfigUpdate,
     db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
 ) -> Venue:
-    """Actualiza la configuración de un local."""
+    """Actualiza la configuración de un local (solo admin del local)."""
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+
+    # Solo el admin de este local puede modificarlo
+    if current_admin.id != venue.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar este local",
+        )
 
     update_data = updates.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -94,14 +101,23 @@ async def update_venue(
 
 
 @router.get("/{venue_id}/qr")
-async def get_venue_qr(venue_id: int, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    """Genera el QR code de un local."""
+async def get_venue_qr(
+    venue_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
+) -> dict[str, Any]:
+    """Genera el QR code de un local (solo admin)."""
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
 
-    # TODO: Obtener base_url de settings o request
+    if current_admin.id != venue.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para ver el QR de este local",
+        )
+
     base_url = "http://localhost:8000"
     join_url = generate_venue_qr_url(base_url, venue.qr_token)
     qr_base64 = qr_to_base64(join_url)

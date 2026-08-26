@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool
 
 from src.main import app
 from src.database import Base, get_db
@@ -17,8 +17,7 @@ TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(
     TEST_DATABASE_URL,
-    poolclass=StaticPool,
-    connect_args={"check_same_thread": False},
+    poolclass=NullPool,
     echo=False,
 )
 TestingSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -36,15 +35,15 @@ async def override_get_db():
 app.dependency_overrides[get_db] = override_get_db
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_database():
-    """Resetea la base de datos para cada test."""
+    """Crea las tablas antes de todos los tests."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture

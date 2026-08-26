@@ -1,94 +1,89 @@
-# 🎵 SongQueue
+# SongQueue
 
-Sistema de cola de canciones multi-local con integración de YouTube, generación de QR por establecimiento, control de dispositivos y gestión en tiempo real vía WebSockets.
+Sistema de cola de canciones multi-local con integracion de YouTube, generacion de QR por establecimiento, control de dispositivos y gestion en tiempo real via WebSockets.
 
-## ✨ Características
+## Caracteristicas
 
-- 🏪 **Multi-local**: Cada local tiene su propia cola, configuración y QR único
-- 📱 **QR por local**: Los clientes escanean un QR y acceden directamente a la cola del local
-- 🎵 **YouTube Integration**: Búsqueda y reproducción de videos de YouTube
-- 🔒 **Control por dispositivo**: Límite de canciones por dispositivo usando fingerprint
-- 👤 **Panel Admin**: Gestión completa de la cola (reordenar, eliminar, pausar)
-- ⚡ **Tiempo real**: WebSockets para sincronización instantánea entre clientes y reproductor
-- 🐳 **Dockerizado**: MySQL en contenedor, app lista para containerizar
-- 🧪 **Testeado**: Suite de tests con pytest (SQLite en memoria)
+- **Multi-local**: Cada local tiene su propia cola, configuracion y QR unico
+- **QR por local**: Los clientes escanean un QR y acceden directamente a la cola del local
+- **YouTube Integration**: Busqueda y reproduccion de videos de YouTube
+- **Control por dispositivo**: Limite de canciones por dispositivo usando fingerprint
+- **Panel Admin**: Gestion completa de la cola con autenticacion JWT
+- **Tiempo real**: WebSockets para sincronizacion instantanea
+- **Dockerizado**: MySQL + App en contenedores
+- **Testeado**: Suite completa con pytest
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```
 songqueue/
-├── docker-compose.yml      # MySQL + (app en Etapa 5)
+├── docker-compose.yml      # MySQL + App
+├── Dockerfile              # Imagen de la app
 ├── src/
 │   ├── main.py             # Entry point FastAPI
-│   ├── config.py           # Configuración centralizada (Pydantic Settings)
-│   ├── database.py         # Conexión SQLAlchemy async
-│   ├── models/             # Modelos SQLAlchemy
+│   ├── config.py           # Pydantic Settings
+│   ├── database.py         # SQLAlchemy async
+│   ├── models/             # SQLAlchemy models
 │   ├── schemas/            # Pydantic schemas
-│   ├── routers/            # Endpoints API + WebSockets
-│   ├── services/           # Lógica de negocio
-│   └── utils/              # Utilidades (QR, seguridad)
-├── alembic/                # Migraciones de base de datos
-├── tests/                  # Tests con pytest
+│   ├── routers/            # API + WebSockets
+│   ├── services/           # Logica de negocio
+│   └── utils/              # QR, JWT, Auth
+├── alembic/                # Migraciones
+├── tests/                  # Tests pytest
 ├── seed_data.py            # Datos de prueba
-└── frontend/               # Frontend (Etapa 4)
+└── frontend/               # HTML/JS vanilla
+    ├── index.html          # Cliente (QR)
+    ├── admin.html          # Panel admin
+    └── player.html         # Reproductor TV
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-### 1. Clonar y entrar
+### Local (desarrollo)
 ```bash
-git clone <repo>
-cd songqueue
-```
-
-### 2. Variables de entorno
-```bash
+# 1. Variables de entorno
 cp .env.example .env
-# Editar .env con tus valores (la API key de YouTube ya está incluida)
-```
 
-### 3. Levantar MySQL (Docker)
-```bash
+# 2. MySQL en Docker
 docker-compose up -d db
-```
 
-### 4. Crear entorno virtual e instalar dependencias
-```bash
+# 3. Entorno virtual
 python -m venv venv
-source venv/bin/activate  # macOS/Linux
+source venv/bin/activate
 pip install -r requirements.txt
-```
 
-### 5. Ejecutar migraciones
-```bash
+# 4. Migraciones y seed
 alembic upgrade head
-```
-
-### 6. Poblar datos de prueba (opcional)
-```bash
 python seed_data.py
-```
 
-### 7. Iniciar servidor
-```bash
+# 5. Tests
+pytest
+
+# 6. Servidor
 uvicorn src.main:app --reload
 ```
 
-### 8. Ejecutar tests
+### Docker completo
 ```bash
-pytest
+docker-compose up --build
 ```
 
-## 📋 Plan de Etapas
+### URLs
+- API Docs: http://localhost:8000/docs
+- Cliente: http://localhost:8000/static/index.html?venue=1
+- Admin: http://localhost:8000/static/admin.html?venue=1
+- Reproductor: http://localhost:8000/static/player.html?venue=1
 
-| Etapa | Descripción | Estado |
+## Plan de Etapas
+
+| Etapa | Descripcion | Estado |
 |-------|-------------|--------|
-| 1 | Configuración del proyecto + MySQL Docker | ✅ Completado |
-| 2 | Migraciones + Seed data + Tests | ✅ Completado |
-| 3 | API completa + WebSockets funcionales + Auth | 🚧 En progreso |
-| 4 | Frontend (HTML/JS vanilla → React) | ⏳ Pendiente |
-| 5 | Dockerización completa + Deploy | ⏳ Pendiente |
+| 1 | Configuracion del proyecto + MySQL Docker | Completado |
+| 2 | Migraciones + Seed data + Tests | Completado |
+| 3 | API completa + Auth JWT + WebSockets + Broadcast | Completado |
+| 4 | Frontend (HTML/JS vanilla) | Completado |
+| 5 | Dockerizacion completa | Completado |
 
-## 📝 Licencia
+## Licencia
 
-MIT — Proyecto de portafolio.
+MIT - Proyecto de portafolio.

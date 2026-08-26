@@ -17,7 +17,7 @@ class QueueItemCreate(BaseModel):
     """Schema para agregar una canción a la cola."""
     youtube_id: str = Field(..., min_length=5, max_length=20)
     requested_by: str | None = Field(None, max_length=100)
-    device_fingerprint: str = Field(..., max_length=128)
+    device_fingerprint: str = Field(..., min_length=10, max_length=128)
 
 
 class QueueItemResponse(BaseModel):

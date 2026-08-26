@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unirse a la Cola - SongQueue</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎵 <span id="venue-name">Cargando...</span></h1>
+            <p id="venue-desc"></p>
+        </header>
+
+        <main>
+            <!-- Buscador -->
+            <section class="search-section">
+                <input type="text" id="search-input" placeholder="Buscar canción en YouTube..." autocomplete="off">
+                <button id="search-btn" class="btn btn-primary">🔍 Buscar</button>
+            </section>
+
+            <div id="search-results" class="results-grid"></div>
+
+            <!-- Cola actual -->
+            <section class="queue-section">
+                <h2>📋 Cola Actual</h2>
+                <div id="now-playing" class="now-playing"></div>
+                <ul id="queue-list" class="queue-list"></ul>
+                <p id="queue-empty" class="empty-msg">No hay canciones en la cola</p>
+            </section>
+        </main>
+
+        <footer>
+            <p>Conectado como <span id="device-id">...</span></p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+    <script>
+        // Inicializar página de join
+        (async function() {
+            const pathParts = window.location.pathname.split('/');
+            const qrToken = pathParts[pathParts.length - 1];
+
+            // Obtener info del local por QR token
+            const resp = await fetch(`/api/v1/venues/token/${qrToken}`);
+            if (!resp.ok) {
+                document.body.innerHTML = '<div class="error">Local no encontrado o inactivo</div>';
+                return;
+            }
+            const venue = await resp.json();
+            window.CURRENT_VENUE = venue;
+            document.getElementById('venue-name').textContent = venue.name;
+            document.getElementById('venue-desc').textContent = venue.description || '';
+
+            // Generar device fingerprint
+            const fp = await generateFingerprint();
+            window.DEVICE_FINGERPRINT = fp;
+            document.getElementById('device-id').textContent = fp.substring(0, 16) + '...';
+
+            // Conectar WebSocket
+            connectWebSocket(venue.id, 'client', fp);
+
+            // Cargar cola inicial
+            loadQueue(venue.id);
+
+            // Setup búsqueda
+            const searchInput = document.getElementById('search-input');
+            const searchBtn = document.getElementById('search-btn');
+
+            searchBtn.addEventListener('click', () => doSearch(searchInput.value));
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') doSearch(searchInput.value);
+            });
+        })();
+
+        async function doSearch(query) {
+            if (!query.trim()) return;
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = '<p class="loading">Buscando...</p>';
+
+            try {
+                const resp = await fetch(`/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=8`);
+                const results = await resp.json();
+                renderSearchResults(results);
+            } catch (e) {
+                resultsDiv.innerHTML = '<p class="error">Error al buscar. Intenta de nuevo.</p>';
+            }
+        }
+
+        function renderSearchResults(results) {
+            const div = document.getElementById('search-results');
+            if (!results.length) {
+                div.innerHTML = '<p class="empty-msg">No se encontraron resultados</p>';
+                return;
+            }
+            div.innerHTML = results.map(song => `
+                <div class="song-card" data-youtube-id="${song.youtube_id}">
+                    <img src="${song.thumbnail_url}" alt="${song.title}">
+                    <div class="song-info">
+                        <h4>${escapeHtml(song.title)}</h4>
+                        <p>${escapeHtml(song.channel)}</p>
+                    </div>
+                    <button class="btn btn-add" onclick="addToQueue('${song.youtube_id}', '${escapeHtml(song.title).replace(/'/g, "\'")}')">➕ Agregar</button>
+                </div>
+            `).join('');
+        }
+
+        async function addToQueue(youtubeId, title) {
+            const venue = window.CURRENT_VENUE;
+            const fp = window.DEVICE_FINGERPRINT;
+            const requestedBy = prompt('¿Tu nombre? (opcional)') || 'Anónimo';
+
+            try {
+                const resp = await fetch(`/api/v1/queue/venue/${venue.id}/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        youtube_id: youtubeId,
+                        requested_by: requestedBy,
+                        device_fingerprint: fp,
+                    }),
+                });
+
+                if (resp.status === 429) {
+                    alert(`⚠️ Límite alcanzado: máximo ${venue.max_songs_per_device} canciones por dispositivo.`);
+                    return;
+                }
+                if (resp.status === 409) {
+                    alert('⚠️ Esta canción ya está en la cola.');
+                    return;
+                }
+                if (!resp.ok) {
+                    alert('Error al agregar la canción.');
+                    return;
+                }
+
+                alert(`✅ "${title}" agregada a la cola!`);
+                document.getElementById('search-results').innerHTML = '';
+                document.getElementById('search-input').value = '';
+            } catch (e) {
+                alert('Error de conexión.');
+            }
+        }
+    </script>
+</body>
+</html>

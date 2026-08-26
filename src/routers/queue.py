@@ -12,22 +12,18 @@ from src.models.song import Song
 from src.models.queue_item import QueueItem, QueueStatus
 from src.schemas.queue import QueueItemCreate, QueueItemResponse, QueueReorder, QueueState
 from src.services.queue_service import (
-    get_queue_by_venue,
-    get_now_playing,
-    add_song_to_queue,
-    reorder_queue,
-    remove_from_queue,
-    mark_as_playing,
-    skip_current,
+    get_queue_by_venue, get_now_playing, add_song_to_queue,
+    reorder_queue, remove_from_queue, mark_as_playing, skip_current,
 )
 from src.services.device_service import can_device_add_song, get_or_create_device
 from src.services.youtube_service import get_video_details
+from src.utils.auth import get_current_admin, get_optional_admin
+from src.routers.websocket import manager as ws_manager
 
 router = APIRouter()
 
 
 def _queue_item_to_dict(item: QueueItem) -> dict:
-    """Convierte un QueueItem a dict con la canción anidada."""
     song_dict = None
     if item.song:
         song_dict = {
@@ -51,9 +47,25 @@ def _queue_item_to_dict(item: QueueItem) -> dict:
     }
 
 
+async def _broadcast_queue_update(db: AsyncSession, venue_id: int):
+    """Broadcast del estado actual de la cola a todos los clientes del local."""
+    now_playing = await get_now_playing(db, venue_id)
+    queue = await get_queue_by_venue(db, venue_id)
+    upcoming = [q for q in queue if q.status != QueueStatus.PLAYING]
+
+    await ws_manager.broadcast_to_venue(venue_id, {
+        "type": "queue_updated",
+        "data": {
+            "venue_id": venue_id,
+            "now_playing": _queue_item_to_dict(now_playing) if now_playing else None,
+            "upcoming": [_queue_item_to_dict(q) for q in upcoming],
+            "total_pending": len(upcoming),
+        },
+    })
+
+
 @router.get("/venue/{venue_id}", response_model=QueueState)
 async def get_queue_state(venue_id: int, db: AsyncSession = Depends(get_db)) -> QueueState:
-    """Obtiene el estado completo de la cola de un local."""
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
@@ -61,8 +73,6 @@ async def get_queue_state(venue_id: int, db: AsyncSession = Depends(get_db)) -> 
 
     now_playing = await get_now_playing(db, venue_id)
     queue = await get_queue_by_venue(db, venue_id)
-
-    # Filtrar now_playing de upcoming
     upcoming = [q for q in queue if q.status != QueueStatus.PLAYING]
 
     return QueueState(
@@ -79,14 +89,11 @@ async def add_to_queue(
     item_data: QueueItemCreate,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Agrega una canción a la cola de un local."""
-    # Verificar local
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue or not venue.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado o inactivo")
 
-    # Verificar límite del dispositivo
     can_add = await can_device_add_song(db, venue_id, item_data.device_fingerprint, venue.max_songs_per_device)
     if not can_add:
         raise HTTPException(
@@ -94,12 +101,10 @@ async def add_to_queue(
             detail=f"Límite de {venue.max_songs_per_device} canciones por dispositivo alcanzado",
         )
 
-    # Obtener o crear canción
     result = await db.execute(select(Song).where(Song.youtube_id == item_data.youtube_id))
     song = result.scalar_one_or_none()
 
     if not song:
-        # Buscar en YouTube y crear
         details = await get_video_details(item_data.youtube_id)
         if not details:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video de YouTube no encontrado")
@@ -114,7 +119,6 @@ async def add_to_queue(
         await db.commit()
         await db.refresh(song)
 
-    # Verificar duplicados
     if not venue.allow_duplicates:
         result = await db.execute(
             select(QueueItem).where(
@@ -129,7 +133,6 @@ async def add_to_queue(
                 detail="Esta canción ya está en la cola",
             )
 
-    # Verificar tamaño máximo de cola
     result = await db.execute(
         select(QueueItem).where(
             QueueItem.venue_id == venue_id,
@@ -142,19 +145,16 @@ async def add_to_queue(
             detail=f"Cola llena (máximo {venue.max_queue_size} canciones)",
         )
 
-    # Registrar/actualizar dispositivo
     await get_or_create_device(db, venue_id, item_data.device_fingerprint)
-
-    # Agregar a cola
     queue_item = await add_song_to_queue(db, venue_id, song, item_data)
 
-    # Recargar con la relación song
     result = await db.execute(
-        select(QueueItem)
-        .options(selectinload(QueueItem.song))
-        .where(QueueItem.id == queue_item.id)
+        select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == queue_item.id)
     )
     queue_item = result.scalar_one()
+
+    # Broadcast automático
+    await _broadcast_queue_update(db, venue_id)
 
     return _queue_item_to_dict(queue_item)
 
@@ -164,9 +164,13 @@ async def reorder_queue_endpoint(
     venue_id: int,
     reorder: QueueReorder,
     db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
 ) -> list[dict]:
-    """Reordena la cola (solo admin)."""
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
     items = await reorder_queue(db, venue_id, reorder)
+    await _broadcast_queue_update(db, venue_id)
     return [_queue_item_to_dict(item) for item in items]
 
 
@@ -175,11 +179,16 @@ async def remove_queue_item(
     venue_id: int,
     item_id: int,
     db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
 ) -> None:
-    """Elimina una canción de la cola (solo admin)."""
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
     removed = await remove_from_queue(db, venue_id, item_id)
     if not removed:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado")
+
+    await _broadcast_queue_update(db, venue_id)
 
 
 @router.post("/venue/{venue_id}/play/{item_id}")
@@ -187,28 +196,52 @@ async def play_item(
     venue_id: int,
     item_id: int,
     db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
 ) -> dict | None:
-    """Marca una canción como playing (admin o reproductor)."""
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
     item = await mark_as_playing(db, venue_id, item_id)
     if item:
         result = await db.execute(
-            select(QueueItem)
-            .options(selectinload(QueueItem.song))
-            .where(QueueItem.id == item.id)
+            select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == item.id)
         )
         item = result.scalar_one()
+
+    await _broadcast_queue_update(db, venue_id)
+
+    # Notificar al reproductor
+    if item:
+        await ws_manager.send_to_player(venue_id, {
+            "type": "play_song",
+            "data": _queue_item_to_dict(item),
+        })
+
     return _queue_item_to_dict(item) if item else None
 
 
 @router.post("/venue/{venue_id}/skip")
-async def skip_item(venue_id: int, db: AsyncSession = Depends(get_db)) -> dict | None:
-    """Salta la canción actual y pasa a la siguiente."""
+async def skip_item(
+    venue_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
+) -> dict | None:
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
     next_item = await skip_current(db, venue_id)
     if next_item:
         result = await db.execute(
-            select(QueueItem)
-            .options(selectinload(QueueItem.song))
-            .where(QueueItem.id == next_item.id)
+            select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == next_item.id)
         )
         next_item = result.scalar_one()
+
+    await _broadcast_queue_update(db, venue_id)
+
+    if next_item:
+        await ws_manager.send_to_player(venue_id, {
+            "type": "play_song",
+            "data": _queue_item_to_dict(next_item),
+        })
+
     return _queue_item_to_dict(next_item) if next_item else None

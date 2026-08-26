@@ -13,9 +13,7 @@ settings = get_settings()
 engine = create_async_engine(
     settings.async_database_url,
     echo=settings.debug,           # Log de queries en modo debug
-    # Desactivado: aiomysql + SQLAlchemy 2.x en este proyecto no soportan bien
-    # el health check de pool_pre_ping, y rompe la conexión al hacer ping().
-    pool_pre_ping=False,
+    pool_pre_ping=True,            # Verifica conexiones antes de usarlas
     pool_size=10,
     max_overflow=20,
 )
