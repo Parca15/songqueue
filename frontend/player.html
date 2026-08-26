@@ -22,6 +22,8 @@
         .connecting { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; z-index: 200; }
         .connecting h1 { font-size: 2rem; margin-bottom: 10px; }
         .connecting p { color: #888; }
+        .skip-wait { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.85); padding: 22px 45px; border-radius: 14px; font-size: 1.3rem; z-index: 300; text-align: center; }
+        .skip-wait small { display: block; color: #e91e63; margin-top: 10px; font-size: 1.1rem; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -36,6 +38,7 @@
         <div class="queue-preview"><h3>Siguientes</h3><div id="queue-preview-list"></div></div>
     </div>
     <div class="venue-badge hidden" id="venue-badge">Local desconocido</div>
+    <div id="skip-wait" class="skip-wait hidden">Preparando siguiente canción...<small id="skip-wait-count"></small></div>
     <script>
         var API_URL = window.location.origin;
         var venueId = new URLSearchParams(window.location.search).get('venue');
@@ -43,6 +46,24 @@
         var stuckTimer = null, hasPlayed = false;
         var usingHtml5 = false;
         var skipLock = false;
+        var waitUntil = 0;
+        var waitTimer = null;
+
+        function showWait(on) {
+            var el = document.getElementById('skip-wait');
+            var cnt = document.getElementById('skip-wait-count');
+            if (!el) return;
+            if (waitTimer) { clearInterval(waitTimer); waitTimer = null; }
+            if (!on) { el.classList.add('hidden'); return; }
+            el.classList.remove('hidden');
+            var tick = function() {
+                var remain = Math.max(0, Math.ceil((waitUntil - Date.now()) / 1000));
+                if (cnt) cnt.textContent = (remain > 0 ? 'En ' + remain + 's' : '');
+                if (remain <= 0 && waitTimer) { clearInterval(waitTimer); waitTimer = null; el.classList.add('hidden'); }
+            };
+            tick();
+            waitTimer = setInterval(tick, 250);
+        }
 
         function loadYouTubeAPI() {
             var tag = document.createElement('script');
@@ -63,9 +84,9 @@
         function getHtml5Player() {
             if (!html5Player) {
                 html5Player = document.getElementById('html5-player');
-                html5Player.addEventListener('ended', function() { autoSkip(); });
+                html5Player.addEventListener('ended', function() { autoSkip(false); });
                 html5Player.addEventListener('playing', function() { hasPlayed = true; clearTimeout(stuckTimer); });
-                html5Player.addEventListener('error', function() { console.log('HTML5 error, skipping...'); autoSkip(); });
+                html5Player.addEventListener('error', function() { console.log('HTML5 error, skipping...'); autoSkip(true); });
             }
             return html5Player;
         }
@@ -93,7 +114,7 @@
                 clearTimeout(stuckTimer);
             } else if (e.data === YT.PlayerState.ENDED) {
                 clearTimeout(stuckTimer);
-                autoSkip();
+                autoSkip(false);
             } else if (e.data === YT.PlayerState.BUFFERING && hasPlayed) {
                 clearTimeout(stuckTimer);
             }
@@ -111,7 +132,7 @@
             vid.classList.remove('hidden');
             vid.src = API_URL + '/api/v1/songs/' + videoId + '/stream.mp4';
             vid.load();
-            vid.play().catch(function() { autoSkip(); });
+            vid.play().catch(function() { autoSkip(true); });
         }
 
         function showYouTubePlayer() {
@@ -125,13 +146,23 @@
             }
         }
 
-        async function autoSkip() {
+        async function autoSkip(isFailure) {
             // Protección: solo saltar UNA vez por canción. El evento 'error',
             // play().catch() y 'ended' pueden dispararse juntos; sin este guard
             // una misma canción fallida consumiría varias de la cola.
             if (skipLock) return;
             skipLock = true;
             clearTimeout(stuckTimer);
+
+            // Cuando la canción no pudo reproducirse, esperar 3s antes de
+            // pasar a la siguiente (el play_song de la siguiente se retrasa en playSong).
+            if (isFailure) {
+                waitUntil = Date.now() + 3000;
+                showWait(true);
+            } else {
+                waitUntil = 0;
+                showWait(false);
+            }
 
             // Detener la reproducción actual para evitar más eventos de error/ended
             try {
@@ -198,9 +229,19 @@
             var vid = s.youtube_id;
             if (!vid) return;
             if (vid !== currentVideoId) {
+                // Si hay una espera pendiente (p. ej. tras una canción que falló),
+                // mostrar el indicador y reproducir la siguiente después de la espera.
+                var wait = waitUntil - Date.now();
+                if (wait > 0) {
+                    showWait(true);
+                    clearTimeout(stuckTimer);
+                    setTimeout(function() { playSong(item); }, wait + 60);
+                    return;
+                }
                 currentVideoId = vid;
                 skipLock = false;
                 hasPlayed = false;
+                showWait(false);
                 showYouTubePlayer();
                 clearTimeout(stuckTimer);
                 if (player && player.loadVideoById) {
