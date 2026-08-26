@@ -46,44 +46,10 @@
         var stuckTimer = null, hasPlayed = false;
         var usingHtml5 = false;
         var skipLock = false;
-        var waitUntil = 0;
-        var waitTimer = null;
-        var waitTimeout = null;
-        var pendingItem = null;
-
-        function showWait(on) {
-            var el = document.getElementById('skip-wait');
-            var cnt = document.getElementById('skip-wait-count');
-            if (!el) return;
-            if (waitTimer) { clearInterval(waitTimer); waitTimer = null; }
-            if (!on) { if (cnt) cnt.textContent = ''; el.classList.add('hidden'); return; }
-            el.classList.remove('hidden');
-            var tick = function() {
-                var remain = Math.max(0, Math.ceil((waitUntil - Date.now()) / 1000));
-                if (cnt) cnt.textContent = (remain > 0 ? 'En ' + remain + 's' : '');
-                if (remain <= 0 && waitTimer) { clearInterval(waitTimer); waitTimer = null; }
-            };
-            tick();
-            waitTimer = setInterval(tick, 250);
-        }
 
         function cancelWait() {
-            if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
-            waitUntil = 0;
-            showWait(false);
-        }
-
-        function schedulePending() {
-            // Reprograma la canción pendiente transcurrida la espera.
-            if (waitTimeout) clearTimeout(waitTimeout);
-            waitTimeout = setTimeout(function() {
-                waitTimeout = null;
-                waitUntil = 0;
-                showWait(false);
-                var it = pendingItem;
-                pendingItem = null;
-                if (it) playSong(it);
-            }, 3100);
+            var el = document.getElementById('skip-wait');
+            if (el) el.classList.add('hidden');
         }
 
         function loadYouTubeAPI() {
@@ -117,10 +83,18 @@
             hasPlayed = false;
             stuckTimer = setTimeout(function() {
                 if (!hasPlayed && currentVideoId) {
-                    console.log('YouTube stuck, trying HTML5 fallback...');
-                    tryHtml5Fallback(currentVideoId);
+                    if (!usingHtml5) {
+                        // No arranco en 3s via YouTube: ultima oportunidad
+                        // con el stream del backend (suele funcionar).
+                        console.log('No inicio en 3s, probando stream HTML5...');
+                        tryHtml5Fallback(currentVideoId);
+                    } else {
+                        // Ya en HTML5 y tampoco inicio en 3s: saltar a la siguiente.
+                        console.log('No inicio en 3s, saltando a la siguiente...');
+                        autoSkip(true);
+                    }
                 }
-            }, 6000);
+            }, 3000);
         }
 
         function onPlayerError(e) {
@@ -154,6 +128,8 @@
             vid.src = API_URL + '/api/v1/songs/' + videoId + '/stream.mp4';
             vid.load();
             vid.play().catch(function() { autoSkip(true); });
+            // El stream HTML5 tambien tiene 3s para iniciar; si no, saltara.
+            startStuckTimer();
         }
 
         function showYouTubePlayer() {
@@ -174,16 +150,7 @@
             if (skipLock) return;
             skipLock = true;
             clearTimeout(stuckTimer);
-
-            // Cuando la canción no pudo reproducirse, esperar 3s antes de
-            // pasar a la siguiente (la canción pendiente se congela en playSong).
-            if (isFailure) {
-                waitUntil = Date.now() + 3000;
-                showWait(true);
-                schedulePending();
-            } else {
-                cancelWait();
-            }
+            cancelWait();
 
             // Detener la reproducción actual para evitar más eventos de error/ended
             try {
@@ -250,19 +217,9 @@
             var vid = s.youtube_id;
             if (!vid) return;
 
-            // Si hay una espera activa (p. ej. tras una canción que falló),
-            // congelar la canción hasta que transcurran los 3s; schedulePending
-            // la reproducirá después. Sin espera activa, reproducir de inmediato.
-            var wait = waitUntil - Date.now();
-            if (vid !== currentVideoId && wait > 0) {
-                pendingItem = item;
-                showWait(true);
-                clearTimeout(stuckTimer);
-                return;
-            }
-
+            // Al ingresar una cancion se arranca el chequeo: si en 3s no
+            // reproduce, startStuckTimer salta a la siguiente.
             if (vid !== currentVideoId) {
-                pendingItem = null;
                 cancelWait();
                 currentVideoId = vid;
                 skipLock = false;
