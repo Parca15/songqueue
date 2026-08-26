@@ -12,7 +12,7 @@ from src.database import get_db
 from src.models.venue import Venue
 from src.schemas.venue import VenueCreate, VenueResponse, VenueConfigUpdate
 from src.utils.security import get_password_hash
-from src.utils.qr_generator import generate_venue_qr_url, qr_to_base64
+from src.utils.qr_generator import qr_to_base64
 from src.utils.auth import get_current_admin
 
 router = APIRouter()

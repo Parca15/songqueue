@@ -18,7 +18,7 @@ from src.services.queue_service import (
 )
 from src.services.device_service import can_device_add_song, get_or_create_device
 from src.services.youtube_service import get_video_details
-from src.utils.auth import get_current_admin, get_optional_admin
+from src.utils.auth import get_current_admin
 from src.routers.websocket import manager as ws_manager
 
 router = APIRouter()

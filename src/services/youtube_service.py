@@ -221,37 +221,6 @@ async def _get_video_details_api(youtube_id: str) -> YouTubeSearchResult | None:
 
 # ── yt-dlp (busqueda local, sin API key) ──
 
-# ── Filtro de videos reproducibles ──
-
-async def _filter_embeddable(videos: list[YouTubeSearchResult]) -> list[YouTubeSearchResult]:
-    """Filtra videos que no se pueden reproducir (bloqueados por copyright, etc)."""
-    async def check_embeddable(video: YouTubeSearchResult) -> YouTubeSearchResult | None:
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video.youtube_id}&format=json"
-                resp = await client.get(url)
-                if resp.status_code == 200:
-                    return video
-        except Exception:
-            pass
-        return None
-
-    tasks = [check_embeddable(v) for v in videos]
-    results = await asyncio.gather(*tasks)
-    return [r for r in results if r is not None]
-
-
-async def is_video_embeddable(youtube_id: str) -> bool:
-    """Verifica si un video de YouTube se puede incrustar (no bloqueado por copyright)."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={youtube_id}&format=json"
-            resp = await client.get(url)
-            return resp.status_code == 200
-    except Exception:
-        return True  # Si no se puede verificar, permitir por defecto
-
-
 async def _search_ytdlp(query: str, max_results: int) -> list[YouTubeSearchResult]:
     """Busca videos usando yt-dlp (extrae info de YouTube sin API key)."""
     import yt_dlp
