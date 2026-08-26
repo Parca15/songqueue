@@ -21,6 +21,7 @@ pydantic-settings==2.5.2
 # ── YouTube ──
 google-api-python-client==2.147.0
 yt-dlp>=2026.8.0
+imageio-ffmpeg==0.6.0
 
 # ── QR ──
 qrcode[pil]==7.4.2

@@ -101,25 +101,16 @@
         async function tryHtml5Fallback(videoId) {
             if (usingHtml5) return;
             console.log('Trying HTML5 fallback for: ' + videoId);
-            try {
-                var res = await fetch(API_URL + '/api/v1/songs/' + videoId + '/stream');
-                if (!res.ok) { autoSkip(); return; }
-                var data = await res.json();
-                if (!data.stream_url) { autoSkip(); return; }
-
-                usingHtml5 = true;
-                clearTimeout(stuckTimer);
-
-                document.getElementById('youtube-player').style.display = 'none';
-                var vid = getHtml5Player();
-                vid.classList.remove('hidden');
-                vid.src = data.stream_url;
-                vid.load();
-                vid.play().catch(function() { autoSkip(); });
-            } catch(e) {
-                console.log('HTML5 fallback failed:', e);
-                autoSkip();
-            }
+            // El backend combina video (H.264) + audio (AAC) en MP4 fragmentado,
+            // lo que permite reproducir canciones que YouTube no permite embed.
+            usingHtml5 = true;
+            clearTimeout(stuckTimer);
+            document.getElementById('youtube-player').style.display = 'none';
+            var vid = getHtml5Player();
+            vid.classList.remove('hidden');
+            vid.src = API_URL + '/api/v1/songs/' + videoId + '/stream.mp4';
+            vid.load();
+            vid.play().catch(function() { autoSkip(); });
         }
 
         function showYouTubePlayer() {

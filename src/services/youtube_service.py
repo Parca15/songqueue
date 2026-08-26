@@ -3,6 +3,7 @@ Servicio de integracion con YouTube.
 Orden de busqueda: YouTube API -> yt-dlp (local) -> Piped -> Invidious
 """
 import asyncio
+import shutil
 import time
 from typing import Any
 
@@ -327,6 +328,105 @@ async def get_stream_url(youtube_id: str) -> str | None:
     except Exception as e:
         print(f"Error getting stream URL for {youtube_id}: {e}")
     return None
+
+
+def get_ffmpeg_exe() -> str | None:
+    """Devuelve la ruta del binario ffmpeg existente (sistema o fallback embebido)."""
+    path = shutil.which("ffmpeg")
+    if path:
+        return path
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return None
+
+
+async def resolve_youtube_stream(youtube_id: str) -> dict | None:
+    """
+    Resuelve las URLs de video/audio para reproducir en HTML5 (``<video>``).
+
+    YouTube ya no expone muestras progresivas MP4 con audio+video en un solo
+    archivo para gran parte de los videos (solo DASH separado). Por eso se
+    eligen aqui las muestras optimas:
+
+      - Video: mejor formato H.264 (avc1) en MP4 (compatible con HTML5 y TV).
+      - Audio: mejor pista M4A/AAC en MP4.
+
+    Devuelve un dict con ``video_url``, ``audio_url`` (o None si el video ya trae
+    audio combinado) y flags ``video_h264`` / ``audio_copy`` para decidir si
+    ffmpeg puede re-muxear con ``-c copy`` o debe transcondificar.
+    """
+    import yt_dlp
+
+    def _extract():
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+            },
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(f"https://www.youtube.com/watch?v={youtube_id}", download=False)
+
+    try:
+        loop = asyncio.get_event_loop()
+        info = await loop.run_in_executor(None, _extract)
+    except Exception as e:
+        print(f"Error resolving stream for {youtube_id}: {e}")
+        return None
+
+    if not info:
+        return None
+
+    fmts = [f for f in info.get("formats", []) if f.get("url")]
+    if not fmts:
+        return None
+
+    # 1. Si hay un formato combinado (audio+video en un solo archivo), usarlo.
+    combined = sorted([f for f in fmts if _is_combined(f)],
+                      key=lambda f: (f.get("height") or 0), reverse=True)
+    if combined:
+        best = combined[0]
+        return {
+            "video_url": best["url"],
+            "audio_url": None,
+            "codec_h264": (best.get("vcodec") or "").startswith("avc1"),
+            "copyable": True,
+        }
+
+    # 2. Video: preferir H.264 (avc1) en MP4; fallback al mejor video disponible.
+    videos = sorted([f for f in fmts
+                     if f.get("vcodec") and f["vcodec"] != "none"],
+                    key=lambda f: (f.get("height") or 0), reverse=True)
+    h264 = [f for f in videos if (f.get("vcodec") or "").startswith("avc1")
+            or (f.get("vcodec") or "").startswith("avc1.")]
+    video = (h264 or videos)[0]
+    # 3. Audio: prefer M4A/AAC en MP4; fallback al mejor audio disponible.
+    audios = sorted([f for f in fmts
+                     if f.get("acodec") and f["acodec"] != "none"],
+                    key=lambda f: (f.get("abr") or 0), reverse=True)
+    m4a = [f for f in audios if f.get("ext") in ("m4a", "mp4")]
+    audio = (m4a or audios)[0] if audios else None
+
+    vid_codec = video.get("vcodec") or "mp4v"
+    codec_h264 = vid_codec.startswith("avc1") or vid_codec.startswith("H.264") or vid_codec.startswith("h264")
+    audio_copyable = audio is not None and audio.get("ext") in ("m4a", "mp4")
+
+    return {
+        "video_url": video["url"],
+        "audio_url": audio["url"] if audio else None,
+        "codec_h264": codec_h264,
+        "copyable": audio_copyable,
+    }
+
+
+def _is_combined(f: dict) -> bool:
+    vc, ac = f.get("vcodec"), f.get("acodec")
+    return bool(vc and vc != "none" and ac and ac != "none")
 
 
 # ── Piped API (gratis, sin API key) ──

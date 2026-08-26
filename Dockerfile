@@ -15,6 +15,11 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # Etapa 2: Runtime
 FROM python:3.12-slim
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copiar dependencias instaladas
