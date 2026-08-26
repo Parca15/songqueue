@@ -3,25 +3,26 @@ Router WebSocket para sincronización en tiempo real.
 Gestiona conexiones de clientes, reproductores y admins.
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, List
+from typing import Dict
 
 router = APIRouter()
 
-# Estructura: {venue_id: {websocket: {"role": str, "device_id": str}}}
+
 class ConnectionManager:
     """Gestiona conexiones WebSocket por local."""
 
     def __init__(self):
+        # {venue_id: {websocket: {"role": str, "device_id": str}}}
         self.active_connections: Dict[int, Dict[WebSocket, dict]] = {}
 
-    async def connect(self, websocket: WebSocket, venue_id: int, role: str = "client", device_id: str = ""):
+    async def connect(self, websocket: WebSocket, venue_id: int):
         """Acepta una nueva conexión WebSocket."""
         await websocket.accept()
         if venue_id not in self.active_connections:
             self.active_connections[venue_id] = {}
         self.active_connections[venue_id][websocket] = {
-            "role": role,
-            "device_id": device_id,
+            "role": "client",
+            "device_id": "",
         }
 
     def disconnect(self, websocket: WebSocket, venue_id: int):
@@ -31,12 +32,20 @@ class ConnectionManager:
             if not self.active_connections[venue_id]:
                 del self.active_connections[venue_id]
 
+    def update_role(self, websocket: WebSocket, venue_id: int, role: str, device_id: str = ""):
+        """Actualiza el rol de una conexión."""
+        if venue_id in self.active_connections and websocket in self.active_connections[venue_id]:
+            self.active_connections[venue_id][websocket] = {
+                "role": role,
+                "device_id": device_id,
+            }
+
     async def broadcast_to_venue(self, venue_id: int, message: dict, role: str | None = None):
         """Envía un mensaje a todos los clientes de un local (opcionalmente filtrado por rol)."""
         if venue_id not in self.active_connections:
             return
         disconnected = []
-        for ws, info in self.active_connections[venue_id].items():
+        for ws, info in list(self.active_connections[venue_id].items()):
             if role is None or info.get("role") == role:
                 try:
                     await ws.send_json(message)
@@ -50,9 +59,19 @@ class ConnectionManager:
         """Envía un mensaje solo al reproductor de un local."""
         await self.broadcast_to_venue(venue_id, message, role="player")
 
+    async def send_to_admins(self, venue_id: int, message: dict):
+        """Envía un mensaje solo a los admins de un local."""
+        await self.broadcast_to_venue(venue_id, message, role="admin")
+
     def get_connection_count(self, venue_id: int) -> int:
         """Retorna el número de conexiones activas en un local."""
         return len(self.active_connections.get(venue_id, {}))
+
+    def get_connections_by_role(self, venue_id: int, role: str) -> list:
+        """Retorna las conexiones de un rol específico."""
+        if venue_id not in self.active_connections:
+            return []
+        return [ws for ws, info in self.active_connections[venue_id].items() if info.get("role") == role]
 
 
 manager = ConnectionManager()
@@ -62,9 +81,14 @@ manager = ConnectionManager()
 async def venue_websocket(websocket: WebSocket, venue_id: int):
     """
     WebSocket principal para un local.
-    Los clientes se conectan y reciben actualizaciones de la cola en tiempo real.
+    Protocolo:
+      1. Cliente se conecta
+      2. Cliente envía: {"action": "register", "role": "client|player|admin", "device_id": "..."}
+      3. Servidor responde: {"type": "registered", "venue_id": ...}
+      4. El servidor puede enviar: {"type": "queue_updated", "data": {...}}
+                             {"type": "now_playing", "data": {...}}
+                             {"type": "player_command", "command": "play|pause|skip"}
     """
-    # El cliente debe enviar su rol en el primer mensaje
     await manager.connect(websocket, venue_id)
     try:
         while True:
@@ -74,14 +98,12 @@ async def venue_websocket(websocket: WebSocket, venue_id: int):
             if action == "register":
                 role = data.get("role", "client")
                 device_id = data.get("device_id", "")
-                manager.active_connections[venue_id][websocket] = {
-                    "role": role,
-                    "device_id": device_id,
-                }
+                manager.update_role(websocket, venue_id, role, device_id)
                 await websocket.send_json({
                     "type": "registered",
                     "venue_id": venue_id,
                     "role": role,
+                    "connections": manager.get_connection_count(venue_id),
                 })
 
             elif action == "queue_update":
@@ -98,8 +120,25 @@ async def venue_websocket(websocket: WebSocket, venue_id: int):
                     "data": data.get("song", {}),
                 })
 
+            elif action == "player_command":
+                # Comando del admin al reproductor
+                await manager.send_to_player(venue_id, {
+                    "type": "player_command",
+                    "command": data.get("command"),
+                    "data": data.get("data", {}),
+                })
+
             elif action == "ping":
-                await websocket.send_json({"type": "pong"})
+                await websocket.send_json({"type": "pong", "timestamp": data.get("timestamp")})
+
+            elif action == "get_stats":
+                await websocket.send_json({
+                    "type": "stats",
+                    "venue_id": venue_id,
+                    "total_connections": manager.get_connection_count(venue_id),
+                    "players": len(manager.get_connections_by_role(venue_id, "player")),
+                    "admins": len(manager.get_connections_by_role(venue_id, "admin")),
+                })
 
     except WebSocketDisconnect:
         manager.disconnect(websocket, venue_id)

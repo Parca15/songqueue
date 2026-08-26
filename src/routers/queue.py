@@ -28,30 +28,32 @@ router = APIRouter()
 
 def _queue_item_to_dict(item: QueueItem) -> dict:
     """Convierte un QueueItem a dict con la canción anidada."""
-    return {
-        "id": item.id,
-        "venue_id": item.venue_id,
-        "song_id": item.song_id,
-        "position": item.position,
-        "status": item.status,
-        "requested_by": item.requested_by,
-        "created_at": item.created_at,
-        "song": {
+    song_dict = None
+    if item.song:
+        song_dict = {
             "id": item.song.id,
             "youtube_id": item.song.youtube_id,
             "title": item.song.title,
             "channel": item.song.channel,
             "thumbnail_url": item.song.thumbnail_url,
             "duration_seconds": item.song.duration_seconds,
-            "created_at": item.song.created_at,
-        } if item.song else None,
+            "created_at": item.song.created_at.isoformat() if item.song.created_at else None,
+        }
+    return {
+        "id": item.id,
+        "venue_id": item.venue_id,
+        "song_id": item.song_id,
+        "position": item.position,
+        "status": item.status.value if hasattr(item.status, 'value') else item.status,
+        "requested_by": item.requested_by,
+        "created_at": item.created_at.isoformat() if item.created_at else None,
+        "song": song_dict,
     }
 
 
 @router.get("/venue/{venue_id}", response_model=QueueState)
 async def get_queue_state(venue_id: int, db: AsyncSession = Depends(get_db)) -> QueueState:
     """Obtiene el estado completo de la cola de un local."""
-    # Verificar que el local existe
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
@@ -145,7 +147,14 @@ async def add_to_queue(
 
     # Agregar a cola
     queue_item = await add_song_to_queue(db, venue_id, song, item_data)
-    await db.refresh(queue_item, attribute_names=["song"])
+
+    # Recargar con la relación song
+    result = await db.execute(
+        select(QueueItem)
+        .options(selectinload(QueueItem.song))
+        .where(QueueItem.id == queue_item.id)
+    )
+    queue_item = result.scalar_one()
 
     return _queue_item_to_dict(queue_item)
 
@@ -181,6 +190,13 @@ async def play_item(
 ) -> dict | None:
     """Marca una canción como playing (admin o reproductor)."""
     item = await mark_as_playing(db, venue_id, item_id)
+    if item:
+        result = await db.execute(
+            select(QueueItem)
+            .options(selectinload(QueueItem.song))
+            .where(QueueItem.id == item.id)
+        )
+        item = result.scalar_one()
     return _queue_item_to_dict(item) if item else None
 
 
@@ -188,4 +204,11 @@ async def play_item(
 async def skip_item(venue_id: int, db: AsyncSession = Depends(get_db)) -> dict | None:
     """Salta la canción actual y pasa a la siguiente."""
     next_item = await skip_current(db, venue_id)
+    if next_item:
+        result = await db.execute(
+            select(QueueItem)
+            .options(selectinload(QueueItem.song))
+            .where(QueueItem.id == next_item.id)
+        )
+        next_item = result.scalar_one()
     return _queue_item_to_dict(next_item) if next_item else None
