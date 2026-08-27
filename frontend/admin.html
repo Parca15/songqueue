@@ -5,40 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SongQueue - Admin</title>
     <style>
+        :root {
+            --accent: #e91e63;
+            --accent-2: #ff5722;
+            --bg: #0b0b12;
+            --card: #16161f;
+            --card-hover: #1d1d28;
+            --border: #262633;
+            --text-dim: #88889a;
+            --green: #22c55e;
+            --blue: #3b82f6;
+            --orange: #f97316;
+            --purple: #a855f7;
+            --red: #ef4444;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
-        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: radial-gradient(circle at top left, #1a0f24, #0b0b12 45%); color: #fff; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
 
         header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid #222; margin-bottom: 28px; }
         header h1 { font-size: 2rem; background: linear-gradient(135deg, #e91e63, #ff5722); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        header .venue-tag { font-size: 16px; color: #888; background: #1a1a1a; padding: 8px 18px; border-radius: 24px; border: 1px solid #333; }
-        .logout-btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #f44336; background: transparent; color: #f44336; font-size: 15px; cursor: pointer; }
+        header .venue-tag { font-size: 16px; color: #999; background: rgba(255,255,255,0.06); padding: 8px 18px; border-radius: 24px; border: 1px solid #2a2a3a; backdrop-filter: blur(6px); }
+        .logout-btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #f44336; background: transparent; color: #f44336; font-size: 15px; cursor: pointer; transition: all .2s; }
         .logout-btn:hover { background: #f44336; color: #fff; }
 
-        .login-form { max-width: 440px; margin: 100px auto; padding: 40px; background: #141414; border-radius: 18px; border: 1px solid #222; }
+        .login-form { max-width: 440px; margin: 100px auto; padding: 40px; background: #14141d; border-radius: 18px; border: 1px solid #222; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
         .login-form h2 { margin-bottom: 28px; text-align: center; font-size: 1.5rem; }
-        .login-form input { width: 100%; padding: 16px 20px; margin-bottom: 16px; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; }
-        .login-form input:focus { outline: none; border-color: #e91e63; }
-        .login-form button { width: 100%; padding: 16px; border-radius: 12px; border: none; background: linear-gradient(135deg, #e91e63, #c2185b); color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; }
-        .login-form button:hover { opacity: 0.9; }
+        .login-form input { width: 100%; padding: 16px 20px; margin-bottom: 16px; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; transition: border-color .2s; }
+        .login-form input:focus { outline: none; border-color: #e91e63; box-shadow: 0 0 0 3px rgba(233,30,99,.15); }
+        .login-form button { width: 100%; padding: 16px; border-radius: 12px; border: none; background: linear-gradient(135deg, #e91e63, #c2185b); color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; transition: transform .15s, box-shadow .15s; }
+        .login-form button:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 10px 30px rgba(233,30,99,.35); }
         .hidden { display: none !important; }
 
         .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { background: #141414; border: 1px solid #222; border-radius: 16px; padding: 24px; }
-        .card h3 { font-size: 1rem; margin-bottom: 18px; color: #e91e63; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .card { background: var(--card); border: 1px solid var(--border, #222); border-radius: 16px; padding: 24px; transition: border-color .2s, transform .15s; }
+        .card:hover { border-color: #2e2e3f; }
+        .card h3 { font-size: 1rem; margin-bottom: 18px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 0 !important; }
         .full-width { grid-column: 1 / -1; }
 
         .top-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
         .qr-card { text-align: center; }
-        .qr-card img { width: 200px; height: 200px; margin: 14px 0; border-radius: 14px; border: 3px solid #333; }
-        .qr-card .qr-link { display: block; color: #e91e63; text-decoration: none; font-size: 14px; margin-bottom: 16px; word-break: break-all; }
-        .video-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px; border: none; background: linear-gradient(135deg, #e91e63, #c2185b); color: #fff; font-size: 16px; cursor: pointer; font-weight: 600; }
-        .video-btn:hover { opacity: 0.85; }
+        .qr-card img { width: 200px; height: 200px; margin: 14px 0; border-radius: 14px; border: 3px solid #2a2a3a; }
+        .qr-card .qr-link { display: block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 16px; word-break: break-all; }
+        .video-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 16px; cursor: pointer; font-weight: 600; transition: transform .15s, box-shadow .15s; }
+        .video-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(232,58,97,.35); }
 
         .stat-row { display: flex; gap: 12px; }
-        .stat-box { flex: 1; background: #1a1a1a; padding: 18px 14px; border-radius: 12px; text-align: center; border: 1px solid #222; }
-        .stat-box .number { font-size: 2.2rem; font-weight: 700; color: #e91e63; }
-        .stat-box .label { font-size: 13px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-box { flex: 1; background: var(--card); padding: 18px 14px; border-radius: 12px; text-align: center; border: 1px solid var(--border, #222); transition: transform .15s; }
+        .stat-box:hover { transform: translateY(-2px); }
+        .stat-box .number { font-size: 2.2rem; font-weight: 700; color: var(--accent); }
+        .stat-box .label { font-size: 13px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .config-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #1a1a1a; }
         .config-row:last-child { border-bottom: none; }
@@ -56,28 +72,30 @@
         .search-results::-webkit-scrollbar { width: 8px; }
         .search-results::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 
-        .song-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; transition: border-color 0.2s; }
-        .song-card:hover { border-color: #444; }
+        .song-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); transition: border-color .2s, transform .15s; }
+        .song-card:hover { border-color: #2e2e3f; transform: translateX(2px); }
         .song-card img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
         .song-card .info { flex: 1; min-width: 0; }
         .song-card .info h4 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .song-card .info p { font-size: 13px; color: #666; }
+        .song-card .info p { font-size: 13px; color: var(--text-dim); }
         .song-card .actions { display: flex; gap: 6px; flex-shrink: 0; }
-        .song-card .actions button { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; }
-        .btn-add-queue { background: #4caf50; color: #fff; }
-        .btn-add-queue:hover { background: #45a049; }
-        .btn-add-playlist { background: #2196f3; color: #fff; }
-        .btn-add-playlist:hover { background: #1976d2; }
+        .song-card .actions button { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; transition: filter .15s, transform .15s; }
+        .song-card .actions button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-add-queue { background: var(--green); color: #fff; }
+        .btn-add-queue:hover { background: #16a34a; }
+        .btn-add-playlist { background: var(--blue); color: #fff; }
+        .btn-add-playlist:hover { background: #2563eb; }
 
-        .tabs { display: flex; gap: 4px; margin-bottom: 18px; background: #1a1a1a; border-radius: 12px; padding: 4px; }
-        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: #888; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
-        .tab-btn.active { background: #e91e63; color: #fff; }
+        .tabs { display: flex; gap: 4px; margin-bottom: 18px; background: var(--card); border-radius: 12px; padding: 4px; }
+        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
+        .tab-btn:hover { color: #ccc; }
+        .tab-btn.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(233,30,99,.35); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .queue-item-admin { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; transition: border-color 0.2s; }
-        .queue-item-admin:hover { border-color: #444; }
-        .queue-item-admin.playing { border-color: #e91e63; background: linear-gradient(135deg, #2a1520, #1a1a1a); }
+        .queue-item-admin { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); transition: border-color .2s, transform .15s; }
+        .queue-item-admin:hover { border-color: #2a2a3a; }
+        .queue-item-admin.playing { border-color: var(--accent); background: linear-gradient(135deg, #2a1520, var(--card)); box-shadow: 0 0 16px rgba(233,30,99,.15); }
         .queue-item-admin img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
         .queue-item-admin .pos { width: 32px; text-align: center; font-size: 15px; font-weight: 700; color: #666; }
         .queue-item-admin.playing .pos { color: #e91e63; }
@@ -85,41 +103,72 @@
         .queue-item-admin .info h4 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .queue-item-admin .info p { font-size: 13px; color: #666; }
         .queue-item-admin .actions { display: flex; gap: 6px; flex-shrink: 0; }
-        .queue-item-admin .actions button { padding: 8px 14px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; }
-        .btn-play { background: #2196f3; color: #fff; }
-        .btn-skip { background: #ff9800; color: #fff; }
-        .btn-remove { background: #f44336; color: #fff; }
-        .btn-move { background: #9c27b0; color: #fff; }
+        .queue-item-admin .actions button { padding: 8px 14px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; transition: filter .15s, transform .15s; }
+        .queue-item-admin .actions button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-play { background: var(--blue); color: #fff; }
+        .btn-skip { background: var(--orange); color: #fff; }
+        .btn-remove { background: var(--red); color: #fff; }
+        .btn-move { background: var(--purple); color: #fff; }
 
-        .playlist-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; }
+        .playlist-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); }
         .playlist-item img { width: 60px; height: 46px; border-radius: 8px; object-fit: cover; }
         .playlist-item .info { flex: 1; }
         .playlist-item .info h4 { font-size: 15px; }
-        .playlist-item .info p { font-size: 13px; color: #666; }
-        .playlist-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 10px; background: #1a1a1a; margin-bottom: 8px; border: 1px solid #222; }
+        .playlist-item .info p { font-size: 13px; color: var(--text-dim); }
+        .playlist-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); transition: border-color .2s, transform .15s; }
+        .playlist-card:hover { border-color: #2e2e3f; }
         .playlist-card .info { flex: 1; }
         .playlist-card .info h4 { font-size: 16px; }
-        .playlist-card .info p { font-size: 14px; color: #666; }
+        .playlist-card .info p { font-size: 14px; color: var(--text-dim); }
         .playlist-card .actions { display: flex; gap: 6px; }
-        .playlist-card .actions button { padding: 10px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; }
-        .btn-playlist { background: #4caf50; color: #fff; }
-        .btn-view { background: #2196f3; color: #fff; }
-        .btn-delete { background: #f44336; color: #fff; }
+        .playlist-card .actions button { padding: 10px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; transition: filter .15s; }
+        .playlist-card .actions button:hover { filter: brightness(1.1); }
+        .btn-playlist { background: var(--green); color: #fff; }
+        .btn-view { background: var(--blue); color: #fff; }
+        .btn-delete { background: var(--red); color: #fff; }
 
-        .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .dialog-content { background: #141414; padding: 32px; border-radius: 16px; border: 1px solid #333; min-width: 360px; }
-        .dialog-content h3 { margin-bottom: 20px; color: #e91e63; font-size: 1.3rem; }
-        .dialog-content input { width: 100%; padding: 14px 18px; margin-bottom: 16px; border-radius: 10px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; }
+        .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .dialog-content { background: var(--card); padding: 32px; border-radius: 16px; border: 1px solid #2a2a3a; min-width: 360px; box-shadow: 0 24px 80px rgba(0,0,0,.6); }
+        .dialog-content h3 { margin-bottom: 20px; color: var(--accent); font-size: 1.3rem; }
+        .dialog-content input { width: 100%; padding: 14px 18px; margin-bottom: 16px; border-radius: 10px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; transition: border-color .2s; }
+        .dialog-content input:focus { outline: none; border-color: var(--accent); }
         .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
-        .dialog-actions button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px; cursor: pointer; font-weight: 600; }
+        .dialog-actions button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px; cursor: pointer; font-weight: 600; transition: filter .15s; }
+        .dialog-actions button:hover { filter: brightness(1.1); }
         .btn-cancel { background: #333; color: #fff; }
-        .btn-confirm { background: #4caf50; color: #fff; }
+        .btn-confirm { background: var(--green); color: #fff; }
 
         .empty-msg { color: #555; padding: 32px; text-align: center; font-size: 16px; }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .btn-new { padding: 10px 20px; border-radius: 10px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-size: 15px; font-weight: 600; }
         .error { background: #2a1515; color: #ff6b6b; padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; font-size: 15px; border: 1px solid #3a1a1a; }
         .success { background: #152a15; color: #6bff6b; padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; font-size: 15px; border: 1px solid #1a3a1a; }
+
+        /* Scroll suave */
+        html { scroll-behavior: smooth; }
+
+        /* Overlay scrollable (para muchos resultados de playlist) */
+        .dialog-content { max-height: 90vh; overflow-y: auto; }
+        .search-results, #queue-list-admin, #playlists-list, #playlist-detail-items, #add-to-playlist-list { max-height: 60vh; overflow-y: auto; }
+
+        /* Tabs sticky */
+        .tabs { position: sticky; top: 0; background: var(--card); z-index: 5; border-bottom: 1px solid var(--border, #222); }
+        .tab-content { max-height: 70vh; overflow-y: auto; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .top-row { grid-template-columns: 1fr; }
+            .panel { grid-template-columns: 1fr; }
+            header { flex-wrap: wrap; gap: 10px; }
+            .qr-card button { width: 100%; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 16px; }
+            header h1 { font-size: 1.5rem; }
+            .song-card, .queue-item-admin { flex-wrap: wrap; }
+            .song-card .actions, .queue-item-admin .actions { width: 100%; justify-content: flex-end; }
+            .stat-row { flex-direction: row; flex-wrap: wrap; gap: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -345,7 +394,7 @@
             btn.disabled = true; btn.textContent = '...';
             try {
                 const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
                     body: JSON.stringify({youtube_id:s.youtube_id, device_fingerprint:'admin-venue-'+venueId, requested_by:'Admin', title:s.title, channel:s.channel, thumbnail_url:s.thumbnail_url, duration_seconds:s.duration_seconds})
                 });
                 if (res.ok) { showMessage('Agregada a la cola', 'success'); loadQueue(); }
@@ -451,7 +500,7 @@
             if (!songId) {
                 try {
                     const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
-                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
                         body: JSON.stringify({youtube_id: pendingSongData.youtube_id, device_fingerprint:'admin-venue-'+venueId, requested_by:'Admin', title: pendingSongData.title, channel: pendingSongData.channel, thumbnail_url: pendingSongData.thumbnail_url, duration_seconds: pendingSongData.duration_seconds})
                     });
                     if (res.ok) {

@@ -25,6 +25,14 @@
         .skip-wait { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.85); padding: 22px 45px; border-radius: 14px; font-size: 1.3rem; z-index: 300; text-align: center; }
         .skip-wait small { display: block; color: #e91e63; margin-top: 10px; font-size: 1.1rem; }
         .hidden { display: none !important; }
+
+        /* Responsive: texto de now-playing más legible en móviles */
+        @media (max-width: 700px) {
+            .now-playing-info h2 { font-size: 1rem; }
+            .now-playing-info p { font-size: 0.8rem; }
+            .queue-preview { min-width: 180px; }
+            .skip-wait { font-size: 1.1rem; padding: 16px 30px; }
+        }
     </style>
 </head>
 <body>
@@ -45,7 +53,16 @@
         var ws = null, player = null, currentVideoId = null;
         var stuckTimer = null, hasPlayed = false;
         var usingHtml5 = false;
-        var skipLock = false;
+                var skipLock = false;
+        // Los navegadores bloquan el autoplay CON SONIDO hasta que el usuario
+        // interactua con la pagina. Esta flag marca si ya hubo interaccion
+        // y sirve para fallback mudo en la primera cancion.
+        var userInteracted = false;
+        function markInteracted() { userInteracted = true; }
+        document.addEventListener('click', markInteracted, { once: true });
+        document.addEventListener('pointerdown', markInteracted, { once: true, passive: true });
+        document.addEventListener('touchstart', markInteracted, {passive:true});
+        document.addEventListener('keydown', markInteracted);
 
         function cancelWait() {
             var el = document.getElementById('skip-wait');
@@ -91,7 +108,8 @@
         function onPlayerError(e) {
             console.log('YouTube error: ' + e.data);
             clearTimeout(stuckTimer);
-            tryHtml5Fallback(currentVideoId);
+            // Al fallback por error, se fuerza muted para garantizar autoplay.
+            tryHtml5Fallback(currentVideoId, true);
         }
 
         function onPlayerStateChange(e) {
@@ -106,7 +124,7 @@
             }
         }
 
-        async function tryHtml5Fallback(videoId) {
+                async function tryHtml5Fallback(videoId, forceMutedUntilPlay) {
             if (usingHtml5) return;
             console.log('Trying HTML5 fallback for: ' + videoId);
             // El backend combina video (H.264) + audio (AAC) en MP4 fragmentado,
@@ -118,7 +136,7 @@
             vid.classList.remove('hidden');
             vid.src = API_URL + '/api/v1/songs/' + videoId + '/stream.mp4';
             vid.load();
-            attemptAutoplay(vid, function() { autoSkip(true); });
+            attemptAutoplay(vid, function() { autoSkip(true); }, forceMutedUntilPlay);
             // El stream del backend tarda en arrancar (yt-dlp + ffmpeg ~6s),
             // medido TTFB ~5.6s. Darle 20s para comenzar a reproducir; si no,
             // entonces si saltar a la siguiente.
@@ -128,23 +146,32 @@
             });
         }
 
-        // Reproduce el video HTML5 forzando el autoplay. Si el navegador/TV
-        // bloquea la reproduccion con audio, reintenta silenciado y luego
-        // restaura el volumen.
-        function attemptAutoplay(vid, onFail) {
+                // Reproduce el video HTML5 forzando el autoplay. Si el navegador/TV
+        // bloquea la reproduccion con audio, reintenta silenciado (que si esta
+        // permitido sin interaccion) y luego intenta restaurar el volumen.
+        function attemptAutoplay(vid, onFail, forceMuted) {
+            // Si se fuerza muted (primera cancion sin interaccion), arrancar
+            // directamente mudo: autoplay mudo esta permitido sin interaccion
+            // en todos los navegadores modernos.
+            if (forceMuted) {
+                vid.muted = true;
+            }
             var p = vid.play();
             if (p && p.then) {
-                p.catch(function() {
+                p.then(function() { userInteracted = true; }).catch(function() {
+                    // Primera reproduccion: autoplay mudo (permitido) + desmute.
+                    var unmute = function() {
+                        vid.removeEventListener('playing', unmute);
+                        vid.muted = false;
+                        try { vid.play(); } catch(e) {}
+                        userInteracted = true;
+                    };
+                    vid.addEventListener('playing', unmute);
                     vid.muted = true;
+                    vid.load();
                     var p2 = vid.play();
                     if (p2 && p2.then) {
-                        p2.then(function() {
-                            var unmute = function() {
-                                vid.muted = false;
-                                vid.removeEventListener('playing', unmute);
-                            };
-                            vid.addEventListener('playing', unmute);
-                        }).catch(function() { onFail && onFail(); });
+                        p2.catch(function() { onFail && onFail(); });
                     }
                 });
             }
@@ -237,26 +264,29 @@
 
             // Al ingresar una cancion se arranca el chequeo: si en 3s no
             // reproduce, startStuckTimer salta a la siguiente.
-            if (vid !== currentVideoId) {
+                        if (vid !== currentVideoId) {
                 cancelWait();
                 currentVideoId = vid;
                 skipLock = false;
                 hasPlayed = false;
+                usingHtml5 = false;
                 showYouTubePlayer();
                 clearTimeout(stuckTimer);
+                // Siempre tratar de reproducir por YouTube (ya sea con o sin
+                // interaccion previa del usuario). userInteracted se usa solo
+                // para decidir el fallback mudo en caso de bloqueo de autoplay.
                 if (player && player.loadVideoById) {
                     player.loadVideoById(vid);
-                    // Forzar reproduccion automatica (algunos navegadores/TV
-                    // cargan el video pero lo dejan en pausa).
                     try { if (player.playVideo) player.playVideo(); } catch(e) {}
                     // YouTube embebido debe arrancar rapido; si en 4s no
                     // reproduce, probar el stream del backend.
                     startStuckTimer(4000, function() {
                         console.log('YouTube no inicia en 4s, probando stream HTML5...');
-                        tryHtml5Fallback(currentVideoId);
+                        tryHtml5Fallback(vid, true);
                     });
                 } else {
-                    tryHtml5Fallback(vid);
+                    // API de YouTube no disponible todavia: usar stream HTML5.
+                    tryHtml5Fallback(vid, userInteracted);
                 }
             }
             document.getElementById('np-title').textContent = s.title || 'Desconocido';
