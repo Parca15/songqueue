@@ -78,23 +78,14 @@
             return html5Player;
         }
 
-        function startStuckTimer() {
+        function startStuckTimer(ms, onStuck) {
             clearTimeout(stuckTimer);
             hasPlayed = false;
             stuckTimer = setTimeout(function() {
                 if (!hasPlayed && currentVideoId) {
-                    if (!usingHtml5) {
-                        // No arranco en 3s via YouTube: ultima oportunidad
-                        // con el stream del backend (suele funcionar).
-                        console.log('No inicio en 3s, probando stream HTML5...');
-                        tryHtml5Fallback(currentVideoId);
-                    } else {
-                        // Ya en HTML5 y tampoco inicio en 3s: saltar a la siguiente.
-                        console.log('No inicio en 3s, saltando a la siguiente...');
-                        autoSkip(true);
-                    }
+                    onStuck && onStuck();
                 }
-            }, 3000);
+            }, ms);
         }
 
         function onPlayerError(e) {
@@ -128,8 +119,13 @@
             vid.src = API_URL + '/api/v1/songs/' + videoId + '/stream.mp4';
             vid.load();
             attemptAutoplay(vid, function() { autoSkip(true); });
-            // El stream HTML5 tambien tiene 3s para iniciar; si no, saltara.
-            startStuckTimer();
+            // El stream del backend tarda en arrancar (yt-dlp + ffmpeg ~6s),
+            // medido TTFB ~5.6s. Darle 20s para comenzar a reproducir; si no,
+            // entonces si saltar a la siguiente.
+            startStuckTimer(20000, function() {
+                console.log('Stream no inicia en 20s, saltando a la siguiente...');
+                autoSkip(true);
+            });
         }
 
         // Reproduce el video HTML5 forzando el autoplay. Si el navegador/TV
@@ -253,7 +249,12 @@
                     // Forzar reproduccion automatica (algunos navegadores/TV
                     // cargan el video pero lo dejan en pausa).
                     try { if (player.playVideo) player.playVideo(); } catch(e) {}
-                    startStuckTimer();
+                    // YouTube embebido debe arrancar rapido; si en 4s no
+                    // reproduce, probar el stream del backend.
+                    startStuckTimer(4000, function() {
+                        console.log('YouTube no inicia en 4s, probando stream HTML5...');
+                        tryHtml5Fallback(currentVideoId);
+                    });
                 } else {
                     tryHtml5Fallback(vid);
                 }
