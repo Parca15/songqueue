@@ -333,7 +333,7 @@
                 document.getElementById('cfg-max-queue').value = v.max_queue_size;
                 document.getElementById('cfg-duplicates').checked = v.allow_duplicates;
                 document.getElementById('cfg-active').checked = v.is_active;
-                const qrRes = await fetch(`${API_URL}/api/v1/venues/${venueId}/qr`, {headers:{'Authorization':`Bearer ${token}`}});
+                const qrRes = await fetch(`${API_URL}/api/v1/venues/${venueId}/qr?base_url=${encodeURIComponent(API_URL)}`, {headers:{'Authorization':`Bearer ${token}`}});
                 const qr = await qrRes.json(); document.getElementById('qr-image').src = qr.qr_base64;
                 document.getElementById('qr-link').href = qr.join_url;
                 document.getElementById('qr-link').textContent = qr.join_url;

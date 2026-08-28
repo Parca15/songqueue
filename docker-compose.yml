@@ -49,7 +49,7 @@ services:
       - DEBUG=false
       - HOST=0.0.0.0
       - PORT=8000
-      - SERVER_BASE_URL=${SERVER_BASE_URL:-http://192.168.1.7}
+      - SERVER_BASE_URL=${SERVER_BASE_URL:-http://Jeysons-MacBook-Pro.local}
     depends_on:
       db:
         condition: service_healthy

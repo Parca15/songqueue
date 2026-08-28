@@ -120,10 +120,15 @@ async def update_venue(
 async def get_venue_qr(
     venue_id: int,
     request: Request,
+    base_url: str | None = None,
     db: AsyncSession = Depends(get_db),
     current_admin: Venue = Depends(get_current_admin),
 ) -> dict[str, Any]:
-    """Genera el QR code de un local (solo admin)."""
+    """Genera el QR code de un local (solo admin).
+
+    `base_url` permite indicar la URL base real (p.ej. la IP LAN del host) para
+    que el QR funcione desde otros dispositivos en la misma red.
+    """
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
@@ -135,10 +140,30 @@ async def get_venue_qr(
             detail="No tienes permiso para ver el QR de este local",
         )
 
-    host = request.headers.get("host", "localhost")
-    scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
     import os
-    base_url = os.environ.get("SERVER_BASE_URL", f"{scheme}://{host}")
+    from src.utils.qr_generator import get_server_base_url
+
+    # Se recolectan candidatos y se elige el primero que NO sea localhost,
+    # para que el QR apunte siempre a una direccion alcanzable desde el celular.
+    # Orden: base_url del panel -> SERVER_BASE_URL (env) -> Host header -> .local/IP.
+    scheme = "https" if request.headers.get("x-forwarded-proto") == "https" else "http"
+    host = request.headers.get("host", "")
+    candidates = []
+    if base_url:
+        candidates.append(base_url)
+    env_base = os.environ.get("SERVER_BASE_URL")
+    if env_base:
+        candidates.append(env_base)
+    if host:
+        candidates.append(f"{scheme}://{host}")
+
+    def _is_local(c: str) -> bool:
+        h = c.split("://", 1)[-1].split(":")[0]
+        return h in ("localhost", "127.0.0.1")
+
+    base_url = next((c for c in candidates if not _is_local(c)), None)
+    if not base_url:
+        base_url = get_server_base_url()
     join_url = f"{base_url}/?venue={venue.id}"
     qr_base64 = qr_to_base64(join_url)
 
