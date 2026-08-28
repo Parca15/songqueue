@@ -22,6 +22,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# ffmpeg para el re-mux de streams de YouTube (fallback HTML5)
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copiar dependencias instaladas
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
