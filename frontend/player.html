@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; overflow: hidden; }
         #player-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
-        #youtube-player, #html5-player { width: 100%; height: 100%; }
+        #youtube-player { width: 100%; height: 100%; }
         .overlay { position: fixed; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 100; }
         .now-playing-info { background: rgba(0,0,0,0.7); padding: 15px 25px; border-radius: 12px; backdrop-filter: blur(10px); max-width: 500px; }
         .now-playing-info h2 { font-size: 1.2rem; margin-bottom: 5px; }
@@ -39,7 +39,6 @@
     <div id="connecting" class="connecting"><h1>SongQueue</h1><p>Conectando al local...</p></div>
     <div id="player-container" class="hidden">
         <div id="youtube-player"></div>
-        <video id="html5-player" class="hidden" playsinline></video>
     </div>
     <div class="overlay hidden" id="overlay">
         <div class="now-playing-info"><h2 id="np-title">Esperando cancion...</h2><p id="np-channel">-</p></div>
@@ -52,17 +51,7 @@
         var venueId = new URLSearchParams(window.location.search).get('venue');
         var ws = null, player = null, currentVideoId = null;
         var stuckTimer = null, hasPlayed = false;
-        var usingHtml5 = false;
-                var skipLock = false;
-        // Los navegadores bloquan el autoplay CON SONIDO hasta que el usuario
-        // interactua con la pagina. Esta flag marca si ya hubo interaccion
-        // y sirve para fallback mudo en la primera cancion.
-        var userInteracted = false;
-        function markInteracted() { userInteracted = true; }
-        document.addEventListener('click', markInteracted, { once: true });
-        document.addEventListener('pointerdown', markInteracted, { once: true, passive: true });
-        document.addEventListener('touchstart', markInteracted, {passive:true});
-        document.addEventListener('keydown', markInteracted);
+        var skipLock = false;
 
         function cancelWait() {
             var el = document.getElementById('skip-wait');
@@ -83,16 +72,11 @@
             });
         }
 
-        var html5Player = null;
-
-        function getHtml5Player() {
-            if (!html5Player) {
-                html5Player = document.getElementById('html5-player');
-                html5Player.addEventListener('ended', function() { autoSkip(false); });
-                html5Player.addEventListener('playing', function() { hasPlayed = true; clearTimeout(stuckTimer); });
-                html5Player.addEventListener('error', function() { console.log('HTML5 error, skipping...'); autoSkip(true); });
-            }
-            return html5Player;
+        function showSkipMessage(msg) {
+            var el = document.getElementById('skip-wait');
+            if (el && el.firstChild) el.firstChild.nodeValue = msg;
+            if (el) el.classList.remove('hidden');
+            setTimeout(function() { if (el) el.classList.add('hidden'); }, 3000);
         }
 
         function startStuckTimer(ms, onStuck) {
@@ -108,8 +92,8 @@
         function onPlayerError(e) {
             console.log('YouTube error: ' + e.data);
             clearTimeout(stuckTimer);
-            // Al fallback por error, se fuerza muted para garantizar autoplay.
-            tryHtml5Fallback(currentVideoId, true);
+            showSkipMessage('Este video no se puede reproducir (bloqueado por YouTube)');
+            autoSkip(true);
         }
 
         function onPlayerStateChange(e) {
@@ -124,70 +108,6 @@
             }
         }
 
-                async function tryHtml5Fallback(videoId, forceMutedUntilPlay) {
-            if (usingHtml5) return;
-            console.log('Trying HTML5 fallback for: ' + videoId);
-            // El backend combina video (H.264) + audio (AAC) en MP4 fragmentado,
-            // lo que permite reproducir canciones que YouTube no permite embed.
-            usingHtml5 = true;
-            clearTimeout(stuckTimer);
-            document.getElementById('youtube-player').style.display = 'none';
-            var vid = getHtml5Player();
-            vid.classList.remove('hidden');
-            vid.src = API_URL + '/api/v1/songs/' + videoId + '/stream.mp4';
-            vid.load();
-            attemptAutoplay(vid, function() { autoSkip(true); }, forceMutedUntilPlay);
-            // El stream del backend tarda en arrancar (yt-dlp + ffmpeg ~6s),
-            // medido TTFB ~5.6s. Darle 20s para comenzar a reproducir; si no,
-            // entonces si saltar a la siguiente.
-            startStuckTimer(20000, function() {
-                console.log('Stream no inicia en 20s, saltando a la siguiente...');
-                autoSkip(true);
-            });
-        }
-
-                // Reproduce el video HTML5 forzando el autoplay. Si el navegador/TV
-        // bloquea la reproduccion con audio, reintenta silenciado (que si esta
-        // permitido sin interaccion) y luego intenta restaurar el volumen.
-        function attemptAutoplay(vid, onFail, forceMuted) {
-            // Si se fuerza muted (primera cancion sin interaccion), arrancar
-            // directamente mudo: autoplay mudo esta permitido sin interaccion
-            // en todos los navegadores modernos.
-            if (forceMuted) {
-                vid.muted = true;
-            }
-            var p = vid.play();
-            if (p && p.then) {
-                p.then(function() { userInteracted = true; }).catch(function() {
-                    // Primera reproduccion: autoplay mudo (permitido) + desmute.
-                    var unmute = function() {
-                        vid.removeEventListener('playing', unmute);
-                        vid.muted = false;
-                        try { vid.play(); } catch(e) {}
-                        userInteracted = true;
-                    };
-                    vid.addEventListener('playing', unmute);
-                    vid.muted = true;
-                    vid.load();
-                    var p2 = vid.play();
-                    if (p2 && p2.then) {
-                        p2.catch(function() { onFail && onFail(); });
-                    }
-                });
-            }
-        }
-
-        function showYouTubePlayer() {
-            if (usingHtml5) {
-                usingHtml5 = false;
-                var vid = getHtml5Player();
-                vid.pause();
-                vid.classList.add('hidden');
-                vid.src = '';
-                document.getElementById('youtube-player').style.display = '';
-            }
-        }
-
         async function autoSkip(isFailure) {
             // Protección: solo saltar UNA vez por canción. El evento 'error',
             // play().catch() y 'ended' pueden dispararse juntos; sin este guard
@@ -199,12 +119,7 @@
 
             // Detener la reproducción actual para evitar más eventos de error/ended
             try {
-                if (usingHtml5) {
-                    var hv = getHtml5Player();
-                    hv.pause();
-                    hv.removeAttribute('src');
-                    hv.load();
-                } else if (player && player.stopVideo) {
+                if (player && player.stopVideo) {
                     player.stopVideo();
                 }
             } catch(e) {}
@@ -262,31 +177,25 @@
             var vid = s.youtube_id;
             if (!vid) return;
 
-            // Al ingresar una cancion se arranca el chequeo: si en 3s no
-            // reproduce, startStuckTimer salta a la siguiente.
-                        if (vid !== currentVideoId) {
+            // Al ingresar una cancion se arranca el chequeo: si en 6s no
+            // reproduce, se muestra aviso y se salta a la siguiente.
+            if (vid !== currentVideoId) {
                 cancelWait();
                 currentVideoId = vid;
                 skipLock = false;
                 hasPlayed = false;
-                usingHtml5 = false;
-                showYouTubePlayer();
                 clearTimeout(stuckTimer);
-                // Siempre tratar de reproducir por YouTube (ya sea con o sin
-                // interaccion previa del usuario). userInteracted se usa solo
-                // para decidir el fallback mudo en caso de bloqueo de autoplay.
+                // Reproducir siempre via YouTube embebido (video con su propio audio).
                 if (player && player.loadVideoById) {
                     player.loadVideoById(vid);
                     try { if (player.playVideo) player.playVideo(); } catch(e) {}
-                    // YouTube embebido debe arrancar rapido; si en 4s no
-                    // reproduce, probar el stream del backend.
-                    startStuckTimer(4000, function() {
-                        console.log('YouTube no inicia en 4s, probando stream HTML5...');
-                        tryHtml5Fallback(vid, true);
+                    // YouTube embebido debe arrancar rapido; si en 6s no
+                    // reproduce, mostrar aviso y saltar.
+                    startStuckTimer(6000, function() {
+                        console.log('YouTube no inicia, saltando...');
+                        showSkipMessage('Video no disponible, saltando...');
+                        autoSkip(true);
                     });
-                } else {
-                    // API de YouTube no disponible todavia: usar stream HTML5.
-                    tryHtml5Fallback(vid, userInteracted);
                 }
             }
             document.getElementById('np-title').textContent = s.title || 'Desconocido';
@@ -308,14 +217,10 @@
         function handleCmd(cmd) {
             clearTimeout(stuckTimer);
             if (cmd === 'skip') {
-                if (usingHtml5) { getHtml5Player().pause(); getHtml5Player().src = ''; }
-                else if (player && player.stopVideo) player.stopVideo();
+                if (player && player.stopVideo) player.stopVideo();
                 return;
             }
-            if (usingHtml5) {
-                if (cmd === 'play') getHtml5Player().play();
-                else if (cmd === 'pause') getHtml5Player().pause();
-            } else if (player) {
+            if (player) {
                 if (cmd === 'play') player.playVideo();
                 else if (cmd === 'pause') player.pauseVideo();
             }
