@@ -39,3 +39,4 @@ class YouTubeSearchResult(BaseModel):
     thumbnail_url: str
     duration_seconds: int | None = None
     genre: str | None = None
+    views: int | None = None

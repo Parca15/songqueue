@@ -104,46 +104,66 @@ def _get_youtube_client() -> Any:
     return _youtube_client
 
 
+def _sort_by_views(results: list[YouTubeSearchResult]) -> list[YouTubeSearchResult]:
+    """Ordena de mayor a menor numero de visitas (los sin visitas van al final)."""
+    return sorted(results, key=lambda r: (r.views is None, -(r.views or 0)))
+
+
 async def search_youtube(query: str, max_results: int = 10) -> list[YouTubeSearchResult]:
-    """Busca videos. Orden: cache -> yt-dlp -> YouTube API -> Piped -> Invidious."""
+    """Busca videos. Orden: cache -> yt-dlp -> YouTube API -> Piped -> Invidious.
+
+    Los resultados se ordenan de mayor a menor numero de visitas.
+    """
     # 1. Verificar cache
     cached = _check_cache(query, max_results)
     if cached is not None:
         return cached
 
+    # Sobrefetch para tener margen al ordenar por visitas
+    fetch_count = max_results * 2
+
+    def _finalize(results: list[YouTubeSearchResult]) -> list[YouTubeSearchResult] | None:
+        if not results:
+            return None
+        return _sort_by_views(results)[:max_results]
+
     # 2. Intentar yt-dlp (rapido, confiable, sin API key)
     try:
-        results = await _search_ytdlp(query, max_results)
-        if results:
-            _set_cache(query, max_results, results)
-            return results
+        results = await _search_ytdlp(query, fetch_count)
+        final = _finalize(results)
+        if final is not None:
+            _set_cache(query, max_results, final)
+            return final
     except Exception as e:
         print(f"yt-dlp fallo: {e}")
 
     # 3. Intentar YouTube Data API (lento si la key no funciona)
     if settings.youtube_api_key:
         try:
-            results = await _search_youtube_api(query, max_results)
-            if results:
-                _set_cache(query, max_results, results)
-                return results
+            results = await _search_youtube_api(query, fetch_count)
+            final = _finalize(results)
+            if final is not None:
+                _set_cache(query, max_results, final)
+                return final
         except Exception as e:
             print(f"YouTube API fallo: {e}")
 
     # 4. Fallback a Piped
     try:
-        results = await _search_piped(query, max_results)
-        if results:
-            _set_cache(query, max_results, results)
-            return results
+        results = await _search_piped(query, fetch_count)
+        final = _finalize(results)
+        if final is not None:
+            _set_cache(query, max_results, final)
+            return final
     except Exception as e:
         print(f"Piped fallo: {e}")
 
     # 5. Fallback a Invidious
-    results = await _search_invidious(query, max_results)
-    if results:
-        _set_cache(query, max_results, results)
-    return results
+    results = await _search_invidious(query, fetch_count)
+    final = _finalize(results)
+    if final is not None:
+        _set_cache(query, max_results, final)
+    return final if final is not None else []
 
 
 async def get_video_details(youtube_id: str) -> YouTubeSearchResult | None:
@@ -173,7 +193,7 @@ async def _search_youtube_api(query: str, max_results: int) -> list[YouTubeSearc
     youtube = _get_youtube_client()
     request = youtube.search().list(
         q=query,
-        part="snippet",
+        part="snippet,statistics",
         type="video",
         maxResults=max_results,
         videoEmbeddable="true",
@@ -190,6 +210,8 @@ async def _search_youtube_api(query: str, max_results: int) -> list[YouTubeSearc
             title=snippet["title"],
             channel=snippet["channelTitle"],
             thumbnail_url=snippet["thumbnails"]["medium"]["url"],
+            duration_seconds=None,
+            views=int(item["statistics"]["viewCount"]) if item.get("statistics", {}).get("viewCount") else None,
         ))
     return results
 
@@ -198,7 +220,7 @@ async def _get_video_details_api(youtube_id: str) -> YouTubeSearchResult | None:
     youtube = _get_youtube_client()
     request = youtube.videos().list(
         id=youtube_id,
-        part="snippet,contentDetails",
+        part="snippet,contentDetails,statistics",
     )
     loop = asyncio.get_event_loop()
     response = await loop.run_in_executor(None, request.execute)
@@ -216,6 +238,7 @@ async def _get_video_details_api(youtube_id: str) -> YouTubeSearchResult | None:
         channel=snippet["channelTitle"],
         thumbnail_url=snippet["thumbnails"]["medium"]["url"],
         duration_seconds=_parse_iso_duration(duration),
+        views=int(item["statistics"]["viewCount"]) if item.get("statistics", {}).get("viewCount") else None,
     )
 
 
@@ -253,6 +276,7 @@ async def _search_ytdlp(query: str, max_results: int) -> list[YouTubeSearchResul
             thumbnail_url=entry.get("thumbnail", f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"),
             duration_seconds=entry.get("duration"),
             genre=detect_genre(title, channel),
+            views=entry.get("view_count"),
         ))
 
     if not results:
@@ -316,6 +340,7 @@ async def _search_piped(query: str, max_results: int) -> list[YouTubeSearchResul
                         channel=item.get("uploaderName", "Unknown"),
                         thumbnail_url=item.get("thumbnailUrl", ""),
                         duration_seconds=item.get("duration"),
+                        views=item.get("views"),
                     ))
                     if len(results) >= max_results:
                         break
@@ -386,6 +411,7 @@ async def _search_invidious(query: str, max_results: int) -> list[YouTubeSearchR
                         channel=item.get("author", "Unknown"),
                         thumbnail_url=_get_best_thumbnail(item.get("videoThumbnails", [])),
                         duration_seconds=item.get("lengthSeconds"),
+                        views=item.get("views"),
                     ))
                     if len(results) >= max_results:
                         break
