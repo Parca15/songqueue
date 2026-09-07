@@ -137,6 +137,18 @@ class TestVenues:
         assert data["max_songs_per_device"] == 10
         assert data["allow_duplicates"] is True
 
+    async def test_get_venue_qr_join_url_uses_token(self, client, super_headers):
+        venue_id, token = await self._create_venue_and_login(client, super_headers)
+        response = await client.get(
+            f"/api/v1/venues/{venue_id}/qr?base_url=http://ejemplo.com",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["join_url"].startswith("http://ejemplo.com/join/")
+        assert "?venue=" not in data["join_url"]
+        assert data["qr_base64"].startswith("data:image/png;base64,")
+
     async def test_get_venue_qr_requires_auth(self, client, super_headers):
         venue_id, token = await self._create_venue_and_login(client, super_headers)
         # Sin token

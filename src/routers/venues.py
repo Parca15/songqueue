@@ -221,7 +221,7 @@ async def get_venue_qr(
     base_url = next((c for c in candidates if not _is_local(c)), None)
     if not base_url:
         base_url = get_server_base_url()
-    join_url = f"{base_url}/?venue={venue.id}"
+    join_url = f"{base_url}/join/{venue.qr_token}"
     qr_base64 = qr_to_base64(join_url)
 
     return {

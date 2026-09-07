@@ -7,9 +7,9 @@
     <meta name="theme-color" content="#0b0b12" media="(prefers-color-scheme: dark)">
     <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
     <title>SongQueue — Admin</title>
-    <link rel="stylesheet" href="design-system.css">
+    <link rel="stylesheet" href="/design-system.css">
     <script src="https://cdn.jsdelivr.net/npm/motion@11/dist/motion.js" defer></script>
-    <script src="motion.js" defer></script>
+    <script src="/motion.js" defer></script>
     <style>
         /* Solo específico de admin no cubierto por el sistema */
         .logout-btn { padding: 0.625rem 1.25rem; border-radius: 10px; border: 1px solid var(--red); background: transparent; color: var(--red); font-size: 0.95rem; cursor: pointer; font-weight: 600; transition: all var(--dur-fast) ease; }
@@ -45,7 +45,10 @@
                     <h3>QR del cliente</h3>
                     <img id="qr-image" src="" alt="QR Code">
                     <a id="qr-link" href="#" target="_blank" class="qr-link"></a>
-                    <button class="btn btn-primary" onclick="openPlayer()">&#9654; Abrir reproductor</button>
+                    <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+                        <button class="btn btn-primary" onclick="openPlayer()">&#9654; Reproductor</button>
+                        <a id="qr-download" class="btn btn-ok" href="#" download="qr-local.png">Descargar QR</a>
+                    </div>
                 </div>
                 <div class="card panel-card">
                     <h3>Estadísticas</h3>
