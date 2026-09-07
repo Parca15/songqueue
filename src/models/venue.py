@@ -2,10 +2,11 @@
 Modelo Venue (Local/Establecimiento).
 Cada local tiene su propia cola, QR único y configuración.
 """
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -32,7 +33,9 @@ class Venue(Base):
     require_approval = Column(Boolean, default=True, nullable=False)
 
     # QR y acceso
-    qr_token = Column(String(64), unique=True, nullable=False, default=lambda: uuid.uuid4().hex)
+    qr_token = Column(
+        String(64), unique=True, nullable=False, default=lambda: uuid.uuid4().hex
+    )
 
     # Admin credentials (hashed)
     admin_username = Column(String(100), nullable=False)
@@ -40,13 +43,23 @@ class Venue(Base):
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # Relaciones
-    queue_items = relationship("QueueItem", back_populates="venue", cascade="all, delete-orphan")
-    devices = relationship("Device", back_populates="venue", cascade="all, delete-orphan")
-    playlists = relationship("Playlist", back_populates="venue", cascade="all, delete-orphan")
-    clients = relationship("VenueClient", back_populates="venue", cascade="all, delete-orphan")
+    queue_items = relationship(
+        "QueueItem", back_populates="venue", cascade="all, delete-orphan"
+    )
+    devices = relationship(
+        "Device", back_populates="venue", cascade="all, delete-orphan"
+    )
+    playlists = relationship(
+        "Playlist", back_populates="venue", cascade="all, delete-orphan"
+    )
+    clients = relationship(
+        "VenueClient", back_populates="venue", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Venue(id={self.id}, name='{self.name}', slug='{self.slug}')>"

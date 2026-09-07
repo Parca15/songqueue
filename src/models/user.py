@@ -3,10 +3,10 @@ Modelo User (Usuario del sistema).
 Hoy solo existe el rol 'superadmin': acceso total a todas las cuentas,
 crear/borrar locales y modificar su configuración.
 """
+
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
 
 from src.database import Base
 

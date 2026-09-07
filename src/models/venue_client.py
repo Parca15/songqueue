@@ -3,9 +3,10 @@ Modelo VenueClient (Cliente registrado de un local).
 Cada persona que escanea el QR registra un nombre único dentro del local.
 Ese nombre aparece junto a las canciones que solicita en el panel del admin.
 """
+
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -17,7 +18,9 @@ class VenueClient(Base):
     __tablename__ = "venue_clients"
 
     id = Column(Integer, primary_key=True, index=True)
-    venue_id = Column(Integer, ForeignKey("venues.id", ondelete="CASCADE"), nullable=False, index=True)
+    venue_id = Column(
+        Integer, ForeignKey("venues.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     display_name = Column(String(30), nullable=False)
     device_fingerprint = Column(String(128), nullable=False, index=True)
 

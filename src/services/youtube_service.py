@@ -2,7 +2,9 @@
 Servicio de integracion con YouTube.
 Orden de busqueda: YouTube API -> yt-dlp (local) -> Piped -> Invidious
 """
+
 import asyncio
+import logging
 import time
 from typing import Any
 
@@ -10,6 +12,8 @@ import httpx
 
 from src.config import get_settings
 from src.schemas.song import YouTubeSearchResult
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -34,15 +38,39 @@ INVIDIOUS_INSTANCES = [
 # ── Genre detection ──
 
 GENRE_KEYWORDS = {
-    "reggaeton": ["reggaeton", "reggaetón", "daddy yankee", "j balvin", "ozuna", "bad bunny", "nicky jam", "karol g", "luny tunes"],
+    "reggaeton": [
+        "reggaeton",
+        "reggaetón",
+        "daddy yankee",
+        "j balvin",
+        "ozuna",
+        "bad bunny",
+        "nicky jam",
+        "karol g",
+        "luny tunes",
+    ],
     "salsa": ["salsa", "celia cruz", "héctor lavoe", "marco antonio solís"],
     "cumbia": ["cumbia", "sonora dinamita", "los ángeles azules", "grupo niche"],
     "bachata": ["bachata", "romeo santos", "anthony santos", "aventura"],
     "merengue": ["merengue", "merengue urbano"],
-    "pop": ["pop", "taylor swift", "ariana grande", "dua lipa", "ed sheeran", "shakira"],
+    "pop": [
+        "pop",
+        "taylor swift",
+        "ariana grande",
+        "dua lipa",
+        "ed sheeran",
+        "shakira",
+    ],
     "rock": ["rock", "green day", "nirvana", "queen", "led zeppelin", "ac/dc"],
     "hip hop": ["hip hop", "rap", "drake", "kendrick", "travis scott"],
-    "electronic": ["electronic", "edm", "david guetta", "calvin harris", "marshmello", "diplo"],
+    "electronic": [
+        "electronic",
+        "edm",
+        "david guetta",
+        "calvin harris",
+        "marshmello",
+        "diplo",
+    ],
     "latin": ["latin", "latin pop"],
     "country": ["country", "luke bryan", "blake shelton"],
     "r&b": ["r&b", "rnb", "soul", "rhythm and blues"],
@@ -81,7 +109,9 @@ def _check_cache(query: str, max_results: int) -> list[YouTubeSearchResult] | No
     return None
 
 
-def _set_cache(query: str, max_results: int, results: list[YouTubeSearchResult]) -> None:
+def _set_cache(
+    query: str, max_results: int, results: list[YouTubeSearchResult]
+) -> None:
     key = _get_cache_key(query, max_results)
     _cache[key] = (time.time(), results)
 
@@ -96,8 +126,10 @@ def _get_youtube_client() -> Any:
         if not settings.youtube_api_key:
             raise ValueError("YOUTUBE_API_KEY no esta configurada")
         from googleapiclient.discovery import build
+
         _youtube_client = build(
-            "youtube", "v3",
+            "youtube",
+            "v3",
             developerKey=settings.youtube_api_key,
             cache_discovery=False,
         )
@@ -109,7 +141,9 @@ def _sort_by_views(results: list[YouTubeSearchResult]) -> list[YouTubeSearchResu
     return sorted(results, key=lambda r: (r.views is None, -(r.views or 0)))
 
 
-async def search_youtube(query: str, max_results: int = 10) -> list[YouTubeSearchResult]:
+async def search_youtube(
+    query: str, max_results: int = 10
+) -> list[YouTubeSearchResult]:
     """Busca videos. Orden: cache -> yt-dlp -> YouTube API -> Piped -> Invidious.
 
     Los resultados se ordenan de mayor a menor numero de visitas.
@@ -122,7 +156,9 @@ async def search_youtube(query: str, max_results: int = 10) -> list[YouTubeSearc
     # Sobrefetch para tener margen al ordenar por visitas
     fetch_count = max_results * 2
 
-    def _finalize(results: list[YouTubeSearchResult]) -> list[YouTubeSearchResult] | None:
+    def _finalize(
+        results: list[YouTubeSearchResult],
+    ) -> list[YouTubeSearchResult] | None:
         if not results:
             return None
         return _sort_by_views(results)[:max_results]
@@ -135,7 +171,7 @@ async def search_youtube(query: str, max_results: int = 10) -> list[YouTubeSearc
             _set_cache(query, max_results, final)
             return final
     except Exception as e:
-        print(f"yt-dlp fallo: {e}")
+        logger.warning(f"yt-dlp fallo: {e}")
 
     # 3. Intentar YouTube Data API (lento si la key no funciona)
     if settings.youtube_api_key:
@@ -146,7 +182,7 @@ async def search_youtube(query: str, max_results: int = 10) -> list[YouTubeSearc
                 _set_cache(query, max_results, final)
                 return final
         except Exception as e:
-            print(f"YouTube API fallo: {e}")
+            logger.warning(f"YouTube API fallo: {e}")
 
     # 4. Fallback a Piped
     try:
@@ -156,7 +192,7 @@ async def search_youtube(query: str, max_results: int = 10) -> list[YouTubeSearc
             _set_cache(query, max_results, final)
             return final
     except Exception as e:
-        print(f"Piped fallo: {e}")
+        logger.warning(f"Piped fallo: {e}")
 
     # 5. Fallback a Invidious
     results = await _search_invidious(query, fetch_count)
@@ -172,7 +208,7 @@ async def get_video_details(youtube_id: str) -> YouTubeSearchResult | None:
         try:
             return await _get_video_details_api(youtube_id)
         except Exception as e:
-            print(f"YouTube API fallo para detalles: {e}")
+            logger.warning(f"YouTube API fallo para detalles: {e}")
 
     try:
         return await _get_video_details_ytdlp(youtube_id)
@@ -189,7 +225,10 @@ async def get_video_details(youtube_id: str) -> YouTubeSearchResult | None:
 
 # ── YouTube Data API v3 ──
 
-async def _search_youtube_api(query: str, max_results: int) -> list[YouTubeSearchResult]:
+
+async def _search_youtube_api(
+    query: str, max_results: int
+) -> list[YouTubeSearchResult]:
     youtube = _get_youtube_client()
     request = youtube.search().list(
         q=query,
@@ -205,14 +244,20 @@ async def _search_youtube_api(query: str, max_results: int) -> list[YouTubeSearc
     for item in response.get("items", []):
         video_id = item["id"]["videoId"]
         snippet = item["snippet"]
-        results.append(YouTubeSearchResult(
-            youtube_id=video_id,
-            title=snippet["title"],
-            channel=snippet["channelTitle"],
-            thumbnail_url=snippet["thumbnails"]["medium"]["url"],
-            duration_seconds=None,
-            views=int(item["statistics"]["viewCount"]) if item.get("statistics", {}).get("viewCount") else None,
-        ))
+        results.append(
+            YouTubeSearchResult(
+                youtube_id=video_id,
+                title=snippet["title"],
+                channel=snippet["channelTitle"],
+                thumbnail_url=snippet["thumbnails"]["medium"]["url"],
+                duration_seconds=None,
+                views=(
+                    int(item["statistics"]["viewCount"])
+                    if item.get("statistics", {}).get("viewCount")
+                    else None
+                ),
+            )
+        )
     return results
 
 
@@ -238,11 +283,16 @@ async def _get_video_details_api(youtube_id: str) -> YouTubeSearchResult | None:
         channel=snippet["channelTitle"],
         thumbnail_url=snippet["thumbnails"]["medium"]["url"],
         duration_seconds=_parse_iso_duration(duration),
-        views=int(item["statistics"]["viewCount"]) if item.get("statistics", {}).get("viewCount") else None,
+        views=(
+            int(item["statistics"]["viewCount"])
+            if item.get("statistics", {}).get("viewCount")
+            else None
+        ),
     )
 
 
 # ── yt-dlp (busqueda local, sin API key) ──
+
 
 async def _search_ytdlp(query: str, max_results: int) -> list[YouTubeSearchResult]:
     """Busca videos usando yt-dlp (extrae info de YouTube sin API key)."""
@@ -256,7 +306,9 @@ async def _search_ytdlp(query: str, max_results: int) -> list[YouTubeSearchResul
             "default_search": "ytsearch",
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            result = ydl.extract_info(f"ytsearch{max_results + 5}:{query}", download=False)
+            result = ydl.extract_info(
+                f"ytsearch{max_results + 5}:{query}", download=False
+            )
             return result.get("entries", []) if result else []
 
     loop = asyncio.get_event_loop()
@@ -269,20 +321,24 @@ async def _search_ytdlp(query: str, max_results: int) -> list[YouTubeSearchResul
         video_id = entry.get("id", "")
         title = entry.get("title", "Sin titulo")
         channel = entry.get("uploader", entry.get("channel", "Unknown"))
-        results.append(YouTubeSearchResult(
-            youtube_id=video_id,
-            title=title,
-            channel=channel,
-            thumbnail_url=entry.get("thumbnail", f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"),
-            duration_seconds=entry.get("duration"),
-            genre=detect_genre(title, channel),
-            views=entry.get("view_count"),
-        ))
+        results.append(
+            YouTubeSearchResult(
+                youtube_id=video_id,
+                title=title,
+                channel=channel,
+                thumbnail_url=entry.get(
+                    "thumbnail", f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg"
+                ),
+                duration_seconds=entry.get("duration"),
+                genre=detect_genre(title, channel),
+                views=entry.get("view_count"),
+            )
+        )
 
     if not results:
         return results
 
-    print(f"yt-dlp retorno {len(results)} resultados")
+    logger.debug(f"yt-dlp retorno {len(results)} resultados")
     return results[:max_results]
 
 
@@ -297,7 +353,9 @@ async def _get_video_details_ytdlp(youtube_id: str) -> YouTubeSearchResult | Non
             "skip_download": True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            return ydl.extract_info(f"https://www.youtube.com/watch?v={youtube_id}", download=False)
+            return ydl.extract_info(
+                f"https://www.youtube.com/watch?v={youtube_id}", download=False
+            )
 
     loop = asyncio.get_event_loop()
     info = await loop.run_in_executor(None, _extract)
@@ -309,12 +367,15 @@ async def _get_video_details_ytdlp(youtube_id: str) -> YouTubeSearchResult | Non
         youtube_id=youtube_id,
         title=info.get("title", "Sin titulo"),
         channel=info.get("uploader", info.get("channel", "Unknown")),
-        thumbnail_url=info.get("thumbnail", f"https://i.ytimg.com/vi/{youtube_id}/mqdefault.jpg"),
+        thumbnail_url=info.get(
+            "thumbnail", f"https://i.ytimg.com/vi/{youtube_id}/mqdefault.jpg"
+        ),
         duration_seconds=info.get("duration"),
     )
 
 
 # ── Piped API (gratis, sin API key) ──
+
 
 async def _search_piped(query: str, max_results: int) -> list[YouTubeSearchResult]:
     """Busca videos usando Piped API."""
@@ -334,22 +395,26 @@ async def _search_piped(query: str, max_results: int) -> list[YouTubeSearchResul
                 for item in data["items"]:
                     if item.get("type") != "stream":
                         continue
-                    results.append(YouTubeSearchResult(
-                        youtube_id=item["url"],
-                        title=item.get("title", "Sin titulo"),
-                        channel=item.get("uploaderName", "Unknown"),
-                        thumbnail_url=item.get("thumbnailUrl", ""),
-                        duration_seconds=item.get("duration"),
-                        views=item.get("views"),
-                    ))
+                    results.append(
+                        YouTubeSearchResult(
+                            youtube_id=item["url"],
+                            title=item.get("title", "Sin titulo"),
+                            channel=item.get("uploaderName", "Unknown"),
+                            thumbnail_url=item.get("thumbnailUrl", ""),
+                            duration_seconds=item.get("duration"),
+                            views=item.get("views"),
+                        )
+                    )
                     if len(results) >= max_results:
                         break
 
                 if results:
-                    print(f"Piped ({instance}) retorno {len(results)} resultados")
+                    logger.debug(
+                        f"Piped ({instance}) retorno {len(results)} resultados"
+                    )
                     return results
         except Exception as e:
-            print(f"Piped {instance} fallo: {e}")
+            logger.warning(f"Piped {instance} fallo: {e}")
             continue
 
     return []
@@ -373,13 +438,14 @@ async def _get_video_details_piped(youtube_id: str) -> YouTubeSearchResult | Non
                     duration_seconds=data.get("duration"),
                 )
         except Exception as e:
-            print(f"Piped {instance} fallo para video {youtube_id}: {e}")
+            logger.warning(f"Piped {instance} fallo para video {youtube_id}: {e}")
             continue
 
     return None
 
 
 # ── Invidious API (gratis, sin API key) ──
+
 
 async def _search_invidious(query: str, max_results: int) -> list[YouTubeSearchResult]:
     """Busca videos usando Invidious API."""
@@ -398,32 +464,40 @@ async def _search_invidious(query: str, max_results: int) -> list[YouTubeSearchR
                 data = response.json()
 
                 if not isinstance(data, list):
-                    print(f"Invidious {instance} retorno formato inesperado: {type(data)}")
+                    logger.warning(
+                        f"Invidious {instance} retorno formato inesperado: {type(data)}"
+                    )
                     continue
 
                 results = []
                 for item in data:
                     if item.get("type") != "video":
                         continue
-                    results.append(YouTubeSearchResult(
-                        youtube_id=item["videoId"],
-                        title=item["title"],
-                        channel=item.get("author", "Unknown"),
-                        thumbnail_url=_get_best_thumbnail(item.get("videoThumbnails", [])),
-                        duration_seconds=item.get("lengthSeconds"),
-                        views=item.get("views"),
-                    ))
+                    results.append(
+                        YouTubeSearchResult(
+                            youtube_id=item["videoId"],
+                            title=item["title"],
+                            channel=item.get("author", "Unknown"),
+                            thumbnail_url=_get_best_thumbnail(
+                                item.get("videoThumbnails", [])
+                            ),
+                            duration_seconds=item.get("lengthSeconds"),
+                            views=item.get("views"),
+                        )
+                    )
                     if len(results) >= max_results:
                         break
 
                 if results:
-                    print(f"Invidious ({instance}) retorno {len(results)} resultados")
+                    logger.debug(
+                        f"Invidious ({instance}) retorno {len(results)} resultados"
+                    )
                     return results
         except Exception as e:
-            print(f"Invidious {instance} fallo: {e}")
+            logger.warning(f"Invidious {instance} fallo: {e}")
             continue
 
-    print("Ninguna fuente de busqueda disponible")
+    logger.warning("Ninguna fuente de busqueda disponible")
     return []
 
 
@@ -445,7 +519,7 @@ async def _get_video_details_invidious(youtube_id: str) -> YouTubeSearchResult |
                     duration_seconds=data.get("lengthSeconds"),
                 )
         except Exception as e:
-            print(f"Invidious {instance} fallo para video {youtube_id}: {e}")
+            logger.warning(f"Invidious {instance} fallo para video {youtube_id}: {e}")
             continue
 
     return None
@@ -464,6 +538,7 @@ def _get_best_thumbnail(thumbnails: list[dict]) -> str:
 def _parse_iso_duration(duration: str) -> int | None:
     """Parsea duracion ISO 8601 (PT4M13S) a segundos."""
     import re
+
     match = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", duration)
     if not match:
         return None

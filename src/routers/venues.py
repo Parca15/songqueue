@@ -2,20 +2,28 @@
 Router para gestion de locales (Venues).
 CRUD de locales, generacion de QR, y configuracion.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.models.venue import Venue
-from src.schemas.venue import VenueCreate, VenueResponse, VenueConfigUpdate
 from src.schemas.client import ClientRegister, ClientResponse
-from src.services.client_service import register_client_name, NameTakenError
-from src.utils.security import get_password_hash
+from src.schemas.venue import VenueConfigUpdate, VenueCreate, VenueResponse
+from src.services.client_service import NameTakenError, register_client_name
+from src.utils.auth import (
+    Principal,
+    SuperAdminPrincipal,
+    get_current_principal,
+    get_current_superadmin,
+    require_venue_access,
+)
 from src.utils.qr_generator import qr_to_base64
-from src.utils.auth import get_current_principal, get_current_superadmin, Principal, SuperAdminPrincipal, require_venue_access
+from src.utils.rate_limit import limiter
+from src.utils.security import get_password_hash
 
 router = APIRouter()
 
@@ -23,7 +31,7 @@ router = APIRouter()
 @router.get("", response_model=list[VenueResponse])
 async def list_venues(db: AsyncSession = Depends(get_db)) -> list[Venue]:
     """Lista todos los locales activos (sin exponer credenciales)."""
-    result = await db.execute(select(Venue).where(Venue.is_active == True))
+    result = await db.execute(select(Venue).where(Venue.is_active.is_(True)))
     return result.scalars().all()
 
 
@@ -35,6 +43,7 @@ async def create_venue(
 ) -> Venue:
     """Crea un nuevo local con configuracion inicial (solo super admin)."""
     import re
+
     slug = re.sub(r"[^\w\s-]", "", venue_data.name).strip().lower()
     slug = re.sub(r"[-\s]+", "-", slug)
 
@@ -68,7 +77,9 @@ async def get_venue(venue_id: int, db: AsyncSession = Depends(get_db)) -> Venue:
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
     return venue
 
 
@@ -78,17 +89,25 @@ async def get_venue_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> Ve
     result = await db.execute(select(Venue).where(Venue.slug == slug))
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
     return venue
 
 
 @router.get("/token/{qr_token}", response_model=VenueResponse)
-async def get_venue_by_qr_token(qr_token: str, db: AsyncSession = Depends(get_db)) -> Venue:
+async def get_venue_by_qr_token(
+    qr_token: str, db: AsyncSession = Depends(get_db)
+) -> Venue:
     """Obtiene un local publicamente por su QR token (sin auth)."""
-    result = await db.execute(select(Venue).where(Venue.qr_token == qr_token, Venue.is_active == True))
+    result = await db.execute(
+        select(Venue).where(Venue.qr_token == qr_token, Venue.is_active.is_(True))
+    )
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
     return venue
 
 
@@ -103,7 +122,9 @@ async def update_venue(
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
 
     require_venue_access(current_admin, venue.id)
 
@@ -116,8 +137,14 @@ async def update_venue(
     return venue
 
 
-@router.post("/{venue_id}/register-name", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{venue_id}/register-name",
+    response_model=ClientResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("60/minute")
 async def register_client(
+    request: Request,
     venue_id: int,
     body: ClientRegister,
     db: AsyncSession = Depends(get_db),
@@ -130,10 +157,15 @@ async def register_client(
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue or not venue.is_active:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado o inactivo")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Local no encontrado o inactivo",
+        )
 
     try:
-        client = await register_client_name(db, venue_id, body.display_name, body.device_fingerprint)
+        client = await register_client_name(
+            db, venue_id, body.display_name, body.device_fingerprint
+        )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except NameTakenError as e:
@@ -157,11 +189,15 @@ async def get_venue_qr(
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
 
     require_venue_access(current_admin, venue.id)
 
     import os
+
+    from src.config import get_settings
     from src.utils.qr_generator import get_server_base_url
 
     # Se recolectan candidatos y se elige el primero que NO sea localhost,
@@ -172,7 +208,7 @@ async def get_venue_qr(
     candidates = []
     if base_url:
         candidates.append(base_url)
-    env_base = os.environ.get("SERVER_BASE_URL")
+    env_base = get_settings().server_base_url or os.environ.get("SERVER_BASE_URL")
     if env_base:
         candidates.append(env_base)
     if host:

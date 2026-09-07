@@ -2,10 +2,11 @@
 Modelo QueueItem (Elemento de Cola).
 Relaciona una canción con un local en una posición específica.
 """
+
 from datetime import datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -13,6 +14,7 @@ from src.database import Base
 
 class QueueStatus(str, PyEnum):
     """Estados posibles de un item en la cola."""
+
     PENDING = "pending"
     PLAYING = "playing"
     PLAYED = "played"
@@ -27,8 +29,12 @@ class QueueItem(Base):
     __tablename__ = "queue_items"
 
     id = Column(Integer, primary_key=True, index=True)
-    venue_id = Column(Integer, ForeignKey("venues.id", ondelete="CASCADE"), nullable=False, index=True)
-    song_id = Column(Integer, ForeignKey("songs.id", ondelete="CASCADE"), nullable=False)
+    venue_id = Column(
+        Integer, ForeignKey("venues.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    song_id = Column(
+        Integer, ForeignKey("songs.id", ondelete="CASCADE"), nullable=False
+    )
     device_fingerprint = Column(String(128), nullable=False, index=True)
 
     # Orden en la cola (posición)

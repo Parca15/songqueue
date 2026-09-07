@@ -31,6 +31,19 @@ services:
     depends_on:
       - app
 
+  # Túnel Cloudflare (demo pública sin abrir puertos).
+  # Uso: CLOUDFLARE_TUNNEL_TOKEN=xxx docker compose --profile tunnel up -d
+  # Requiere SERVER_BASE_URL=https://tu-dominio para QR válidos.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: songqueue_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-sin-token}
+    depends_on:
+      - nginx
+    profiles:
+      - tunnel
+
   app:
     build: .
     container_name: songqueue_api
@@ -38,16 +51,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_NAME=songqueue
-      - DB_USER=songqueue
-      - DB_PASSWORD=songqueue_pass
-      - DATABASE_URL=mysql+aiomysql://songqueue:songqueue_pass@db:3306/songqueue
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production-use-openssl-rand-hex-32}
-      - SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME:-superadmin}
-      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-}
-      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-AIzaSyBoY8w7ckROl4uPmoptD2x5DDJBEf0inRU}
+      - DATABASE_URL=mysql+aiomysql://songqueue:${DB_PASSWORD:?Define DB_PASSWORD en .env}@db:3306/songqueue
+      - SECRET_KEY=${SECRET_KEY:?Define SECRET_KEY en .env (openssl rand -hex 32)}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
       - DEBUG=false
       - HOST=0.0.0.0
       - PORT=8000

@@ -58,7 +58,8 @@
     </div>
 
     <script>
-        const API_URL = window.location.origin;
+        // window.SQ_API_URL permite apuntar a otra API (deploys split).
+        const API_URL = window.SQ_API_URL || window.location.origin;
         let venueId = null;
         let deviceFingerprint = localStorage.getItem('sq_fingerprint') || generateFingerprint();
         let displayName = localStorage.getItem('sq_display_name') || '';

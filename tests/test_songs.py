@@ -1,7 +1,6 @@
 """
 Tests para el router de Songs.
 """
-import pytest
 
 
 class TestSongs:
@@ -9,13 +8,16 @@ class TestSongs:
 
     async def test_create_song(self, client):
         """Test: Crear una canción."""
-        response = await client.post("/api/v1/songs", json={
-            "youtube_id": "test123abc",
-            "title": "Test Song",
-            "channel": "Test Channel",
-            "thumbnail_url": "https://example.com/thumb.jpg",
-            "duration_seconds": 180,
-        })
+        response = await client.post(
+            "/api/v1/songs",
+            json={
+                "youtube_id": "test123abc",
+                "title": "Test Song",
+                "channel": "Test Channel",
+                "thumbnail_url": "https://example.com/thumb.jpg",
+                "duration_seconds": 180,
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["youtube_id"] == "test123abc"
@@ -34,10 +36,13 @@ class TestSongs:
 
     async def test_get_song(self, client):
         """Test: Obtener canción por ID."""
-        create_resp = await client.post("/api/v1/songs", json={
-            "youtube_id": "get456",
-            "title": "Get Song",
-        })
+        create_resp = await client.post(
+            "/api/v1/songs",
+            json={
+                "youtube_id": "get456",
+                "title": "Get Song",
+            },
+        )
         song_id = create_resp.json()["id"]
 
         response = await client.get(f"/api/v1/songs/{song_id}")

@@ -51,7 +51,8 @@
     <div class="venue-badge player-glass hidden" id="venue-badge">Local desconocido</div>
     <div id="skip-wait" class="skip-wait player-glass hidden">Preparando siguiente canción…<small id="skip-wait-count"></small></div>
     <script>
-        var API_URL = window.location.origin;
+        // window.SQ_API_URL permite apuntar a otra API (deploys split).
+        var API_URL = window.SQ_API_URL || window.location.origin;
         var venueId = new URLSearchParams(window.location.search).get('venue');
         var ws = null, player = null, currentVideoId = null;
         var stuckTimer = null, hasPlayed = false;

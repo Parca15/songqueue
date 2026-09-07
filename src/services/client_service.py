@@ -2,9 +2,10 @@
 Servicio de registro de nombres de clientes.
 Cada persona que escanea el QR registra un nombre único dentro del local.
 """
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.venue_client import VenueClient
 
@@ -13,6 +14,7 @@ MAX_NAME_LENGTH = 30
 
 class NameTakenError(Exception):
     """El nombre ya está registrado por otro dispositivo en el local."""
+
     pass
 
 
@@ -62,7 +64,9 @@ async def register_client_name(
     return client
 
 
-async def get_client_name(db: AsyncSession, venue_id: int, device_fingerprint: str) -> str | None:
+async def get_client_name(
+    db: AsyncSession, venue_id: int, device_fingerprint: str
+) -> str | None:
     """Retorna el nombre registrado de un dispositivo en un local, si existe."""
     result = await db.execute(
         select(VenueClient).where(

@@ -1,7 +1,6 @@
 """
 Tests para autenticacion.
 """
-import pytest
 
 
 class TestAuth:
@@ -10,16 +9,23 @@ class TestAuth:
     async def test_login_success(self, client, super_headers):
         """Test: Login exitoso retorna token JWT."""
         # Crear venue primero (solo super admin puede)
-        await client.post("/api/v1/venues", json={
-            "name": "Auth Test Bar",
-            "admin_username": "admin_auth",
-            "admin_password": "authpass123",
-        }, headers=super_headers)
+        await client.post(
+            "/api/v1/venues",
+            json={
+                "name": "Auth Test Bar",
+                "admin_username": "admin_auth",
+                "admin_password": "authpass123",
+            },
+            headers=super_headers,
+        )
 
-        response = await client.post("/api/v1/auth/login", json={
-            "username": "admin_auth",
-            "password": "authpass123",
-        })
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin_auth",
+                "password": "authpass123",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -28,24 +34,34 @@ class TestAuth:
 
     async def test_login_wrong_password(self, client, super_headers):
         """Test: Login con password incorrecto."""
-        await client.post("/api/v1/venues", json={
-            "name": "Auth Fail Bar",
-            "admin_username": "admin_fail",
-            "admin_password": "correctpass",
-        }, headers=super_headers)
+        await client.post(
+            "/api/v1/venues",
+            json={
+                "name": "Auth Fail Bar",
+                "admin_username": "admin_fail",
+                "admin_password": "correctpass",
+            },
+            headers=super_headers,
+        )
 
-        response = await client.post("/api/v1/auth/login", json={
-            "username": "admin_fail",
-            "password": "wrongpass",
-        })
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin_fail",
+                "password": "wrongpass",
+            },
+        )
         assert response.status_code == 401
 
     async def test_login_nonexistent_user(self, client):
         """Test: Login con usuario que no existe."""
-        response = await client.post("/api/v1/auth/login", json={
-            "username": "nonexistent",
-            "password": "somepass",
-        })
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "nonexistent",
+                "password": "somepass",
+            },
+        )
         assert response.status_code == 401
 
     async def test_protected_endpoint_without_token(self, client):
@@ -65,25 +81,35 @@ class TestAuth:
     async def test_admin_can_only_modify_own_venue(self, client, super_headers):
         """Test: Admin solo puede modificar su propio local."""
         # Crear dos venues (como super)
-        v1 = await client.post("/api/v1/venues", json={
-            "name": "Venue One",
-            "admin_username": "admin_one",
-            "admin_password": "pass123",
-        }, headers=super_headers)
-        v1_id = v1.json()["id"]
+        await client.post(
+            "/api/v1/venues",
+            json={
+                "name": "Venue One",
+                "admin_username": "admin_one",
+                "admin_password": "pass123",
+            },
+            headers=super_headers,
+        )
 
-        v2 = await client.post("/api/v1/venues", json={
-            "name": "Venue Two",
-            "admin_username": "admin_two",
-            "admin_password": "pass123",
-        }, headers=super_headers)
+        v2 = await client.post(
+            "/api/v1/venues",
+            json={
+                "name": "Venue Two",
+                "admin_username": "admin_two",
+                "admin_password": "pass123",
+            },
+            headers=super_headers,
+        )
         v2_id = v2.json()["id"]
 
         # Login como admin_one
-        login = await client.post("/api/v1/auth/login", json={
-            "username": "admin_one",
-            "password": "pass123",
-        })
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin_one",
+                "password": "pass123",
+            },
+        )
         token = login.json()["access_token"]
 
         # Intentar modificar venue_two con token de admin_one

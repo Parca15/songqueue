@@ -2,12 +2,13 @@
 Dependencias de autenticación para FastAPI.
 Protege endpoints de admin con JWT (por local o super admin global).
 """
+
 from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.models.user import User
@@ -23,6 +24,7 @@ ROLE_SUPERADMIN = "superadmin"
 @dataclass
 class SuperAdminPrincipal:
     """Principal en memoria para el super admin (no es un Venue)."""
+
     id: int = 0
     username: str = ""
     role: str = ROLE_SUPERADMIN
@@ -117,26 +119,3 @@ def require_venue_access(principal: Principal, venue_id: int) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para este local",
         )
-
-
-async def get_optional_admin(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-    db: AsyncSession = Depends(get_db),
-) -> Venue | None:
-    """
-    Dependency opcional: retorna el admin si hay token válido, None si no.
-    Útil para endpoints que funcionan para usuarios y admins.
-    """
-    if not credentials:
-        return None
-
-    payload = decode_access_token(credentials.credentials)
-    if not payload:
-        return None
-
-    venue_id = payload.get("sub")
-    if not venue_id:
-        return None
-
-    result = await db.execute(select(Venue).where(Venue.id == int(venue_id)))
-    return result.scalar_one_or_none()

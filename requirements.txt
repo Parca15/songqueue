@@ -13,6 +13,7 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.12
+slowapi==0.1.10
 
 # ── Validación ──
 pydantic==2.9.2
@@ -20,8 +21,7 @@ pydantic-settings==2.5.2
 
 # ── YouTube ──
 google-api-python-client==2.147.0
-yt-dlp>=2026.8.0
-imageio-ffmpeg==0.6.0
+yt-dlp==2026.08.19
 
 # ── QR ──
 qrcode[pil]==7.4.2
@@ -33,6 +33,7 @@ python-dotenv==1.0.1
 # ── Testing ──
 pytest==8.3.3
 pytest-asyncio==0.24.0
+pytest-cov==6.0.0
 
 # ── Dev ──
 black==24.8.0

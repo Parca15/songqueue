@@ -2,9 +2,10 @@
 Modelo Device (Dispositivo).
 Rastrea dispositivos por fingerprint para limitar canciones por dispositivo.
 """
+
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from src.database import Base
@@ -16,7 +17,9 @@ class Device(Base):
     __tablename__ = "devices"
 
     id = Column(Integer, primary_key=True, index=True)
-    venue_id = Column(Integer, ForeignKey("venues.id", ondelete="CASCADE"), nullable=False, index=True)
+    venue_id = Column(
+        Integer, ForeignKey("venues.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     fingerprint = Column(String(128), nullable=False, index=True)
 
     # Contador de canciones activas en cola
@@ -28,7 +31,9 @@ class Device(Base):
 
     # Timestamps
     first_seen = Column(DateTime, default=datetime.utcnow, nullable=False)
-    last_seen = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    last_seen = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
     # Relaciones
     venue = relationship("Venue", back_populates="devices")

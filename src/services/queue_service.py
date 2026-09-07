@@ -2,13 +2,13 @@
 Servicio de gestión de colas.
 Lógica de negocio para agregar, reordenar y eliminar canciones.
 """
+
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
 
 from src.models.queue_item import QueueItem, QueueStatus
 from src.models.song import Song
-from src.models.venue import Venue
 from src.schemas.queue import QueueItemCreate, QueueReorder
 
 
@@ -110,7 +110,9 @@ async def approve_waiting_item(
         await move_to_position(db, venue_id, item.id, 1)
 
     result = await db.execute(
-        select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == item_id)
+        select(QueueItem)
+        .options(selectinload(QueueItem.song))
+        .where(QueueItem.id == item_id)
     )
     return result.scalar_one_or_none()
 
@@ -170,7 +172,9 @@ async def add_song_to_queue(
     return queue_item
 
 
-async def reorder_queue(db: AsyncSession, venue_id: int, reorder: QueueReorder) -> list[QueueItem]:
+async def reorder_queue(
+    db: AsyncSession, venue_id: int, reorder: QueueReorder
+) -> list[QueueItem]:
     """Reordena la cola según el orden de IDs proporcionado."""
     for idx, item_id in enumerate(reorder.item_ids, start=1):
         await db.execute(
@@ -182,10 +186,10 @@ async def reorder_queue(db: AsyncSession, venue_id: int, reorder: QueueReorder) 
     return await get_queue_by_venue(db, venue_id)
 
 
-async def move_to_position(db: AsyncSession, venue_id: int, item_id: int, new_position: int) -> list[QueueItem]:
+async def move_to_position(
+    db: AsyncSession, venue_id: int, item_id: int, new_position: int
+) -> list[QueueItem]:
     """Mueve un item a una posición específica, desplazando los demás."""
-    from sqlalchemy import case
-
     # Obtener el item actual y su posición
     result = await db.execute(
         select(QueueItem).where(QueueItem.id == item_id, QueueItem.venue_id == venue_id)
@@ -201,10 +205,12 @@ async def move_to_position(db: AsyncSession, venue_id: int, item_id: int, new_po
 
     # Obtener todos los items activos ordenados por posición
     result = await db.execute(
-        select(QueueItem).where(
+        select(QueueItem)
+        .where(
             QueueItem.venue_id == venue_id,
             QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
-        ).order_by(QueueItem.position)
+        )
+        .order_by(QueueItem.position)
     )
     all_items = result.scalars().all()
 
@@ -242,9 +248,12 @@ async def remove_from_queue(db: AsyncSession, venue_id: int, item_id: int) -> bo
     return result.rowcount > 0
 
 
-async def mark_as_playing(db: AsyncSession, venue_id: int, item_id: int) -> QueueItem | None:
+async def mark_as_playing(
+    db: AsyncSession, venue_id: int, item_id: int
+) -> QueueItem | None:
     """Marca una canción como 'playing' y las demás como pending."""
     from datetime import datetime
+
     # Resetear cualquier otra que esté playing
     await db.execute(
         update(QueueItem)
@@ -264,6 +273,7 @@ async def mark_as_playing(db: AsyncSession, venue_id: int, item_id: int) -> Queu
 async def skip_current(db: AsyncSession, venue_id: int) -> QueueItem | None:
     """Salta la canción actual y marca la siguiente como playing."""
     from datetime import datetime
+
     # Marcar actual como skipped
     await db.execute(
         update(QueueItem)

@@ -1,22 +1,32 @@
 """
 Router de autenticacion para administradores de locales.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.models.user import User
 from src.models.venue import Venue
 from src.schemas.auth import AdminLogin, TokenResponse
-from src.utils.security import verify_password, create_access_token
-from src.utils.auth import get_current_principal, Principal, SuperAdminPrincipal, ROLE_VENUE, ROLE_SUPERADMIN
+from src.utils.auth import (
+    ROLE_SUPERADMIN,
+    ROLE_VENUE,
+    Principal,
+    SuperAdminPrincipal,
+    get_current_principal,
+)
+from src.utils.rate_limit import limiter
+from src.utils.security import create_access_token, verify_password
 
 router = APIRouter()
 
 
 @router.post("/login", response_model=TokenResponse)
+@limiter.limit("30/minute")
 async def admin_login(
+    request: Request,
     credentials: AdminLogin,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:

@@ -1,8 +1,9 @@
 """
 Generador de códigos QR para los locales.
 """
-import io
+
 import base64
+import io
 import socket
 import subprocess
 
@@ -29,7 +30,9 @@ def get_machine_hostname() -> str | None:
     try:
         out = subprocess.run(
             ["scutil", "--get", "LocalHostName"],
-            capture_output=True, text=True, timeout=2,
+            capture_output=True,
+            text=True,
+            timeout=2,
         )
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout.strip()

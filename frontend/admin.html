@@ -165,7 +165,8 @@
         </div>
     </div>
     <script>
-        const API_URL = window.location.origin;
+        // window.SQ_API_URL permite apuntar a otra API (deploys split).
+        const API_URL = window.SQ_API_URL || window.location.origin;
         let token = localStorage.getItem('sq_admin_token');
         let venueId = localStorage.getItem('sq_admin_venue');
         let isSuper = localStorage.getItem('sq_admin_role') === 'superadmin';

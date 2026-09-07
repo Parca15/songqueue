@@ -3,18 +3,17 @@ Configuración de pytest para tests asíncronos.
 Usa SQLite en archivo temporal (la memoria + NullPool pierde las tablas
 entre conexiones).
 """
+
 import os
 import tempfile
 
-import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from src.main import app
 from src.database import Base, get_db
-from src.config import Settings
+from src.main import app
 
 # Base de datos temporal en archivo para tests
 _fd, TEST_DB_PATH = tempfile.mkstemp(prefix="songqueue_test_", suffix=".db")
@@ -26,7 +25,9 @@ engine = create_async_engine(
     poolclass=NullPool,
     echo=False,
 )
-TestingSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+TestingSessionLocal = async_sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
 async def override_get_db():
@@ -39,6 +40,10 @@ async def override_get_db():
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+# Rate limiting desactivado en tests (los límites son para abuso en prod,
+# no para suites que hacen decenas de requests por minuto).
+app.state.limiter.enabled = False
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -61,10 +66,13 @@ async def super_headers(client):
 
     async with TestingSessionLocal() as session:
         await ensure_superadmin(session, "test_super", "superpass123")
-    resp = await client.post("/api/v1/auth/login", json={
-        "username": "test_super",
-        "password": "superpass123",
-    })
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "test_super",
+            "password": "superpass123",
+        },
+    )
     assert resp.status_code == 200, resp.text
     return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 

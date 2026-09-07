@@ -1,28 +1,30 @@
 """
 Router para gestión de canciones y búsqueda en YouTube.
 """
-from fastapi import APIRouter, Depends, HTTPException, status, Query
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.models.song import Song
 from src.schemas.song import SongCreate, SongResponse, YouTubeSearchResult
-from src.services.youtube_service import (
-    search_youtube,
-    get_video_details,
-)
+from src.services.youtube_service import get_video_details, search_youtube
+from src.utils.rate_limit import limiter
 
 router = APIRouter()
 
 
 @router.get("/search", response_model=list[YouTubeSearchResult])
+@limiter.limit("60/minute")
 async def search_songs(
-    q: str = Query(..., min_length=1, max_length=200, description="Término de búsqueda"),
+    request: Request,
+    q: str = Query(
+        ..., min_length=1, max_length=200, description="Término de búsqueda"
+    ),
     limit: int = Query(10, ge=1, le=50),
 ) -> list[YouTubeSearchResult]:
-    """Busca canciones en YouTube."""
+    """Busca canciones en YouTube (limitado: protege la cuota de la API)."""
     return await search_youtube(q, max_results=limit)
 
 
@@ -31,7 +33,9 @@ async def get_song_details(youtube_id: str) -> YouTubeSearchResult:
     """Obtiene detalles de un video de YouTube por su ID."""
     details = await get_video_details(youtube_id)
     if not details:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Video no encontrado"
+        )
     return details
 
 
@@ -42,7 +46,9 @@ async def create_song(
 ) -> Song:
     """Crea/Registra una canción en la base de datos."""
     # Verificar si ya existe
-    result = await db.execute(select(Song).where(Song.youtube_id == song_data.youtube_id))
+    result = await db.execute(
+        select(Song).where(Song.youtube_id == song_data.youtube_id)
+    )
     existing = result.scalar_one_or_none()
     if existing:
         return existing
@@ -60,5 +66,7 @@ async def get_song(song_id: int, db: AsyncSession = Depends(get_db)) -> Song:
     result = await db.execute(select(Song).where(Song.id == song_id))
     song = result.scalar_one_or_none()
     if not song:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Canción no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Canción no encontrada"
+        )
     return song

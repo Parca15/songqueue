@@ -17,28 +17,24 @@ FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# ffmpeg para el re-mux de streams de YouTube (fallback HTML5)
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+# Usuario no-root desde el inicio; dependencias con su ownership
+RUN useradd --create-home --uid 10001 appuser
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+ENV PATH=/home/appuser/.local/bin:$PATH HOME=/home/appuser
 
-# Copiar dependencias instaladas
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
-
-# Copiar codigo fuente
+# Copiar codigo fuente (seed_data.py es solo uso manual/dev, no va a prod)
 COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
-COPY seed_data.py .
 COPY entrypoint.sh .
 
-# Hacer ejecutable el script
-RUN chmod +x entrypoint.sh
+RUN chmod +x entrypoint.sh \
+    && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8000
 

@@ -55,3 +55,5 @@ Thumbs.db
 # Alembic (keep versions but not pycache)
 alembic/__pycache__/
 alembic/versions/__pycache__/
+.coverage
+coverage.xml

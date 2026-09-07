@@ -2,19 +2,25 @@
 Router del super admin: gestión total de cuentas (locales).
 Solo accesible con token de super admin.
 """
+
 import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
 from src.database import get_db
 from src.models.queue_item import QueueItem, QueueStatus
 from src.models.venue import Venue
 from src.models.venue_client import VenueClient
-from src.schemas.venue import VenueCreate, VenueResponse, VenueWithStats, SuperVenueUpdate
+from src.schemas.venue import (
+    SuperVenueUpdate,
+    VenueCreate,
+    VenueResponse,
+    VenueWithStats,
+)
+from src.utils.auth import SuperAdminPrincipal, get_current_superadmin
 from src.utils.security import get_password_hash
-from src.utils.auth import get_current_superadmin, SuperAdminPrincipal
 
 router = APIRouter()
 
@@ -60,7 +66,9 @@ async def list_all_venues(
     return [await _venue_with_stats(db, v) for v in venues]
 
 
-@router.post("/venues", response_model=VenueResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/venues", response_model=VenueResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_venue_as_super(
     venue_data: VenueCreate,
     db: AsyncSession = Depends(get_db),
@@ -104,7 +112,9 @@ async def update_venue_as_super(
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
 
     update_data = updates.model_dump(exclude_unset=True)
 
@@ -141,7 +151,9 @@ async def delete_venue_as_super(
     result = await db.execute(select(Venue).where(Venue.id == venue_id))
     venue = result.scalar_one_or_none()
     if not venue:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado"
+        )
 
     await db.delete(venue)
     await db.commit()

@@ -2,9 +2,10 @@
 Modelo Song (Canción).
 Almacena metadata de videos de YouTube para evitar llamadas repetidas a la API.
 """
+
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from src.database import Base

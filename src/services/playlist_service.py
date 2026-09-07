@@ -1,8 +1,9 @@
 """
 Servicio de gestion de playlists.
 """
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
 from sqlalchemy.orm import selectinload
 
 from src.models.playlist import Playlist, PlaylistItem
@@ -19,7 +20,9 @@ async def get_playlists_by_venue(db: AsyncSession, venue_id: int) -> list[Playli
     return result.scalars().all()
 
 
-async def get_playlist_with_items(db: AsyncSession, playlist_id: int) -> Playlist | None:
+async def get_playlist_with_items(
+    db: AsyncSession, playlist_id: int
+) -> Playlist | None:
     """Obtiene una playlist con sus items y canciones."""
     result = await db.execute(
         select(Playlist)
@@ -41,7 +44,9 @@ async def create_playlist(db: AsyncSession, venue_id: int, name: str) -> Playlis
 async def delete_playlist(db: AsyncSession, playlist_id: int, venue_id: int) -> bool:
     """Elimina una playlist."""
     result = await db.execute(
-        select(Playlist).where(Playlist.id == playlist_id, Playlist.venue_id == venue_id)
+        select(Playlist).where(
+            Playlist.id == playlist_id, Playlist.venue_id == venue_id
+        )
     )
     playlist = result.scalar_one_or_none()
     if not playlist:
@@ -51,11 +56,15 @@ async def delete_playlist(db: AsyncSession, playlist_id: int, venue_id: int) -> 
     return True
 
 
-async def add_song_to_playlist(db: AsyncSession, playlist_id: int, song_id: int) -> PlaylistItem | None:
+async def add_song_to_playlist(
+    db: AsyncSession, playlist_id: int, song_id: int
+) -> PlaylistItem | None:
     """Agrega una cancion al final de una playlist."""
     # Obtener la ultima posicion
     result = await db.execute(
-        select(func.max(PlaylistItem.position)).where(PlaylistItem.playlist_id == playlist_id)
+        select(func.max(PlaylistItem.position)).where(
+            PlaylistItem.playlist_id == playlist_id
+        )
     )
     last_position = result.scalar() or 0
 
@@ -70,7 +79,9 @@ async def add_song_to_playlist(db: AsyncSession, playlist_id: int, song_id: int)
     return item
 
 
-async def remove_song_from_playlist(db: AsyncSession, playlist_id: int, item_id: int) -> bool:
+async def remove_song_from_playlist(
+    db: AsyncSession, playlist_id: int, item_id: int
+) -> bool:
     """Elimina una cancion de una playlist."""
     result = await db.execute(
         select(PlaylistItem).where(
