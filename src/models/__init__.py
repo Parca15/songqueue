@@ -6,5 +6,6 @@ from src.models.song import Song
 from src.models.queue_item import QueueItem
 from src.models.device import Device
 from src.models.playlist import Playlist, PlaylistItem
+from src.models.venue_client import VenueClient
 
-__all__ = ["Venue", "Song", "QueueItem", "Device", "Playlist", "PlaylistItem"]
+__all__ = ["Venue", "Song", "QueueItem", "Device", "Playlist", "PlaylistItem", "VenueClient"]

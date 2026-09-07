@@ -50,6 +50,71 @@ async def get_pending_count(db: AsyncSession, venue_id: int) -> int:
     return result.scalar() or 0
 
 
+async def get_waiting_list(db: AsyncSession, venue_id: int) -> list[QueueItem]:
+    """Obtiene la lista de espera (pendiente de aprobación) ordenada por llegada."""
+    result = await db.execute(
+        select(QueueItem)
+        .options(selectinload(QueueItem.song))
+        .where(
+            QueueItem.venue_id == venue_id,
+            QueueItem.status == QueueStatus.WAITING,
+        )
+        .order_by(QueueItem.created_at)
+    )
+    return result.scalars().all()
+
+
+async def get_waiting_count(db: AsyncSession, venue_id: int) -> int:
+    """Obtiene el número de canciones en lista de espera."""
+    result = await db.execute(
+        select(func.count(QueueItem.id)).where(
+            QueueItem.venue_id == venue_id,
+            QueueItem.status == QueueStatus.WAITING,
+        )
+    )
+    return result.scalar() or 0
+
+
+async def approve_waiting_item(
+    db: AsyncSession, venue_id: int, item_id: int, position: str = "last"
+) -> QueueItem | None:
+    """Aprueba un item en espera y lo pasa a la cola.
+
+    position="first" → prioridad (primero de la cola).
+    position="last" → al final de la cola.
+    """
+    result = await db.execute(
+        select(QueueItem).where(
+            QueueItem.id == item_id,
+            QueueItem.venue_id == venue_id,
+            QueueItem.status == QueueStatus.WAITING,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        return None
+
+    if position == "last":
+        result = await db.execute(
+            select(func.max(QueueItem.position)).where(
+                QueueItem.venue_id == venue_id,
+                QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+            )
+        )
+        item.position = (result.scalar() or 0) + 1
+
+    item.status = QueueStatus.PENDING
+    await db.commit()
+
+    if position == "first":
+        await move_to_position(db, venue_id, item.id, 1)
+
+    result = await db.execute(
+        select(QueueItem).options(selectinload(QueueItem.song)).where(QueueItem.id == item_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_last_played_genre(db: AsyncSession, venue_id: int) -> str | None:
     """Obtiene el género de la última canción reproducida en un local."""
     result = await db.execute(
@@ -73,23 +138,30 @@ async def add_song_to_queue(
     venue_id: int,
     song: Song,
     item_data: QueueItemCreate,
+    status: QueueStatus = QueueStatus.PENDING,
 ) -> QueueItem:
-    """Agrega una canción al final de la cola."""
-    # Obtener la última posición
-    result = await db.execute(
-        select(func.max(QueueItem.position)).where(
-            QueueItem.venue_id == venue_id,
-            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+    """Agrega una canción al final de la cola (o a la lista de espera).
+
+    Los items en espera llevan position=0: su posición solo cobra sentido
+    al aprobarse (primero/último), evitando colisiones con la cola real.
+    """
+    last_position = 0
+    if status != QueueStatus.WAITING:
+        # Obtener la última posición (solo items que suenan o están en cola)
+        result = await db.execute(
+            select(func.max(QueueItem.position)).where(
+                QueueItem.venue_id == venue_id,
+                QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+            )
         )
-    )
-    last_position = result.scalar() or 0
+        last_position = result.scalar() or 0
 
     queue_item = QueueItem(
         venue_id=venue_id,
         song_id=song.id,
         device_fingerprint=item_data.device_fingerprint,
-        position=last_position + 1,
-        status=QueueStatus.PENDING,
+        position=last_position + 1 if status != QueueStatus.WAITING else 0,
+        status=status,
         requested_by=item_data.requested_by,
     )
     db.add(queue_item)

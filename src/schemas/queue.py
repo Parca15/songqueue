@@ -2,6 +2,7 @@
 Schemas para el modelo QueueItem.
 """
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, Field, ConfigDict
 
 from src.models.queue_item import QueueStatus
@@ -48,6 +49,14 @@ class QueueMoveToPosition(BaseModel):
     """Schema para mover un item a una posición específica."""
     item_id: int
     new_position: int = Field(..., ge=1, description="Nueva posición (1 = primero)")
+
+
+class WaitingApprove(BaseModel):
+    """Schema para aprobar un item en espera."""
+    position: Literal["first", "last"] = Field(
+        default="last",
+        description="'first' = prioridad (primero de la cola), 'last' = última en la cola",
+    )
 
 
 class QueueState(BaseModel):

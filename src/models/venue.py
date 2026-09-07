@@ -27,6 +27,10 @@ class Venue(Base):
     allow_duplicates = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
 
+    # Si True, las canciones de clientes van a lista de espera (WAITING)
+    # y el admin decide cuáles pasan a la cola. Si False, entran directo.
+    require_approval = Column(Boolean, default=True, nullable=False)
+
     # QR y acceso
     qr_token = Column(String(64), unique=True, nullable=False, default=lambda: uuid.uuid4().hex)
 
@@ -42,6 +46,7 @@ class Venue(Base):
     queue_items = relationship("QueueItem", back_populates="venue", cascade="all, delete-orphan")
     devices = relationship("Device", back_populates="venue", cascade="all, delete-orphan")
     playlists = relationship("Playlist", back_populates="venue", cascade="all, delete-orphan")
+    clients = relationship("VenueClient", back_populates="venue", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Venue(id={self.id}, name='{self.name}', slug='{self.slug}')>"

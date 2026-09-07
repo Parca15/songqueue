@@ -10,11 +10,11 @@ from src.database import get_db
 from src.models.venue import Venue
 from src.models.song import Song
 from src.models.queue_item import QueueItem, QueueStatus
-from src.schemas.queue import QueueItemCreate, QueueItemResponse, QueueReorder, QueueState, QueueMoveToPosition
+from src.schemas.queue import QueueItemCreate, QueueItemResponse, QueueReorder, QueueState, QueueMoveToPosition, WaitingApprove
 from src.services.queue_service import (
     get_queue_by_venue, get_now_playing, add_song_to_queue,
     reorder_queue, remove_from_queue, mark_as_playing, skip_current,
-    move_to_position,
+    move_to_position, get_waiting_list, approve_waiting_item,
 )
 from src.services.device_service import can_device_add_song, get_or_create_device
 from src.services.youtube_service import get_video_details
@@ -22,6 +22,13 @@ from src.utils.auth import get_current_admin
 from src.routers.websocket import manager as ws_manager
 
 router = APIRouter()
+
+# Fingerprints del sistema que siempre entran directo a la cola (sin aprobación)
+_SYSTEM_FINGERPRINTS = ("auto-play-system", "playlist-system")
+
+
+def _is_system_request(fingerprint: str) -> bool:
+    return fingerprint in _SYSTEM_FINGERPRINTS or fingerprint.startswith("admin-venue-")
 
 # Guard anti-duplicado para auto-skip: evita que llamadas concurrentes/duplicadas
 # de varios reproductores consuman varias canciones de la cola a la vez.
@@ -65,6 +72,20 @@ async def _broadcast_queue_update(db: AsyncSession, venue_id: int):
             "now_playing": _queue_item_to_dict(now_playing) if now_playing else None,
             "upcoming": [_queue_item_to_dict(q) for q in upcoming],
             "total_pending": len(upcoming),
+        },
+    })
+
+
+async def _broadcast_waiting_update(db: AsyncSession, venue_id: int):
+    """Broadcast de la lista de espera solo a los admins del local."""
+    waiting = await get_waiting_list(db, venue_id)
+
+    await ws_manager.send_to_admins(venue_id, {
+        "type": "waiting_updated",
+        "data": {
+            "venue_id": venue_id,
+            "waiting": [_queue_item_to_dict(q) for q in waiting],
+            "total_waiting": len(waiting),
         },
     })
 
@@ -144,7 +165,7 @@ async def add_to_queue(
             select(QueueItem).where(
                 QueueItem.venue_id == venue_id,
                 QueueItem.song_id == song.id,
-                QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+                QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING, QueueStatus.WAITING]),
             )
         )
         if result.scalar_one_or_none():
@@ -156,7 +177,7 @@ async def add_to_queue(
     result = await db.execute(
         select(QueueItem).where(
             QueueItem.venue_id == venue_id,
-            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING, QueueStatus.WAITING]),
         )
     )
     if len(result.scalars().all()) >= venue.max_queue_size:
@@ -166,11 +187,17 @@ async def add_to_queue(
         )
 
     await get_or_create_device(db, venue_id, item_data.device_fingerprint)
-    queue_item = await add_song_to_queue(db, venue_id, song, item_data)
 
-    # Si el item fue agregado por un cliente (no auto-play/playlist), dar prioridad
-    # Insertar antes del primer item de auto-play/playlist
-    if item_data.device_fingerprint not in ("auto-play-system", "playlist-system"):
+    # Si el local requiere aprobación y es un cliente humano → lista de espera
+    to_waiting = venue.require_approval and not _is_system_request(item_data.device_fingerprint)
+    queue_item = await add_song_to_queue(
+        db, venue_id, song, item_data,
+        status=QueueStatus.WAITING if to_waiting else QueueStatus.PENDING,
+    )
+
+    # Si el item fue agregado por un cliente directo a cola (no auto-play/playlist),
+    # dar prioridad: insertar antes del primer item de auto-play/playlist
+    if not to_waiting and item_data.device_fingerprint not in _SYSTEM_FINGERPRINTS:
         # Obtener la cola actual
         current_queue = await get_queue_by_venue(db, venue_id)
         if current_queue:
@@ -198,8 +225,98 @@ async def add_to_queue(
 
     # Broadcast automático
     await _broadcast_queue_update(db, venue_id)
+    if to_waiting:
+        await _broadcast_waiting_update(db, venue_id)
 
     return _queue_item_to_dict(queue_item)
+
+
+@router.get("/venue/{venue_id}/waiting")
+async def get_waiting_state(
+    venue_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
+) -> dict:
+    """Lista de espera completa (solo admin del local)."""
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
+    waiting = await get_waiting_list(db, venue_id)
+    return {
+        "venue_id": venue_id,
+        "waiting": [_queue_item_to_dict(q) for q in waiting],
+        "total_waiting": len(waiting),
+    }
+
+
+@router.get("/venue/{venue_id}/waiting/mine")
+async def get_my_waiting(
+    venue_id: int,
+    device_fingerprint: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Canciones en espera de un dispositivo (público, para que el cliente vea las suyas)."""
+    result = await db.execute(select(Venue).where(Venue.id == venue_id))
+    venue = result.scalar_one_or_none()
+    if not venue:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado")
+
+    waiting = await get_waiting_list(db, venue_id)
+    mine = [q for q in waiting if q.device_fingerprint == device_fingerprint]
+    return {
+        "venue_id": venue_id,
+        "waiting": [_queue_item_to_dict(q) for q in mine],
+        "total_waiting": len(mine),
+    }
+
+
+@router.post("/venue/{venue_id}/waiting/{item_id}/approve")
+async def approve_waiting(
+    venue_id: int,
+    item_id: int,
+    approval: WaitingApprove,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
+) -> dict:
+    """Aprueba un item en espera y lo pasa a la cola (primero o último)."""
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
+    item = await approve_waiting_item(db, venue_id, item_id, approval.position)
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado en espera")
+
+    await _broadcast_queue_update(db, venue_id)
+    await _broadcast_waiting_update(db, venue_id)
+    return _queue_item_to_dict(item)
+
+
+@router.post("/venue/{venue_id}/waiting/{item_id}/reject", status_code=status.HTTP_200_OK)
+async def reject_waiting(
+    venue_id: int,
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_admin: Venue = Depends(get_current_admin),
+) -> dict:
+    """Rechaza un item en espera (lo descarta)."""
+    if current_admin.id != venue_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
+    result = await db.execute(
+        select(QueueItem).where(
+            QueueItem.id == item_id,
+            QueueItem.venue_id == venue_id,
+            QueueItem.status == QueueStatus.WAITING,
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado en espera")
+
+    await remove_from_queue(db, venue_id, item_id)
+
+    await _broadcast_queue_update(db, venue_id)
+    await _broadcast_waiting_update(db, venue_id)
+    return {"ok": True, "item_id": item_id}
 
 
 @router.post("/venue/{venue_id}/reorder")

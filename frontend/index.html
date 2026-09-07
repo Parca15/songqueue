@@ -2,82 +2,69 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SongQueue - Elegir Cancion</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
-        .container { max-width: 720px; margin: 0 auto; padding: 24px; }
-        header { text-align: center; padding: 36px 0; border-bottom: 1px solid #333; margin-bottom: 24px; }
-        header h1 { font-size: 2.4rem; margin-bottom: 10px; }
-        header p { color: #888; font-size: 1.1rem; }
-        .search-box { display: flex; gap: 12px; margin-bottom: 24px; }
-        .search-box input { flex: 1; padding: 16px 20px; border-radius: 14px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 18px; outline: none; }
-        .search-box input:focus { border-color: #e91e63; }
-        .search-box button { padding: 16px 28px; border-radius: 14px; border: none; background: #e91e63; color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; }
-        .search-box button:hover { background: #c2185b; }
-        .search-box button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .results { display: flex; flex-direction: column; gap: 12px; }
-        .song-card { display: flex; align-items: center; gap: 16px; padding: 14px; border-radius: 14px; background: #1a1a1a; border: 1px solid #333; cursor: pointer; transition: all 0.2s; }
-        .song-card:hover { border-color: #e91e63; background: #222; }
-        .song-card img { width: 96px; height: 72px; border-radius: 10px; object-fit: cover; }
-        .song-info { flex: 1; }
-        .song-info h3 { font-size: 16px; margin-bottom: 6px; line-height: 1.3; }
-        .song-info p { font-size: 14px; color: #888; }
-        .song-card .add-btn { padding: 10px 20px; border-radius: 10px; border: none; background: #4caf50; color: #fff; font-size: 15px; cursor: pointer; font-weight: 600; }
-        .song-card .add-btn:hover { background: #45a049; }
-        .song-card .add-btn:disabled { background: #555; cursor: not-allowed; }
-        .queue-section { margin-top: 36px; }
-        .queue-section h2 { font-size: 1.4rem; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
-        .queue-item { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 12px; background: #1a1a1a; border: 1px solid #333; margin-bottom: 10px; }
-        .queue-item.playing { border-color: #e91e63; background: #2a1a1a; }
-        .queue-item img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
-        .queue-item .pos { width: 34px; height: 34px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
-        .queue-item.playing .pos { background: #e91e63; }
-        .queue-info { flex: 1; }
-        .queue-info h4 { font-size: 15px; margin-bottom: 4px; }
-        .queue-info p { font-size: 13px; color: #888; }
-        .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
-        .status-playing { background: #e91e63; }
-        .status-pending { background: #333; color: #aaa; }
-        .empty { text-align: center; color: #666; padding: 48px; font-size: 16px; }
-        .error { background: #3a1a1a; color: #ff6b6b; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
-        .success { background: #1a3a1a; color: #6bff6b; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
-        .info-msg { background: #1a1a3a; color: #6b9fff; padding: 14px; border-radius: 12px; margin-bottom: 18px; font-size: 15px; }
-        .fingerprint { font-size: 12px; color: #444; text-align: center; margin-top: 24px; }
-        .loading { text-align: center; color: #888; padding: 24px; font-size: 16px; }
-        .demo-badge { background: #e91e63; color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 12px; margin-left: 10px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#0b0b12" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+    <title>SongQueue — Elegir Canción</title>
+    <link rel="stylesheet" href="design-system.css">
+    <script src="https://cdn.jsdelivr.net/npm/motion@11/dist/motion.js" defer></script>
+    <script src="motion.js" defer></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>SongQueue</h1>
-            <p id="venue-name">Cargando local...</p>
+    <div class="client-wrap">
+        <header class="app-header hero-center">
+            <h1 class="display">SongQueue</h1>
+            <p class="venue-sub" id="venue-name">Cargando local…</p>
         </header>
 
-        <div id="message"></div>
+        <div id="message" aria-live="polite"></div>
 
-        <div class="search-box">
-            <input type="text" id="search-input" placeholder="Buscar cancion en YouTube..." onkeypress="if(event.key==='Enter') searchSongs()">
-            <button id="search-btn" onclick="searchSongs()">Buscar</button>
+        <div class="search-box" role="search">
+            <input type="text" id="search-input" placeholder="Buscar canción en YouTube…" aria-label="Buscar canción"
+                onkeypress="if(event.key==='Enter') searchSongs()">
+            <button id="search-btn" class="btn-primary" onclick="searchSongs()">Buscar</button>
         </div>
+        <p class="hint" id="approval-hint" style="text-align:center;margin-bottom:1rem;"></p>
 
         <div id="search-results" class="results"></div>
 
         <div class="queue-section">
-            <h2>Cola Actual</h2>
+            <h2><span aria-hidden="true">♪</span> <span id="queue-title">Cola actual</span></h2>
             <div id="queue-list"></div>
         </div>
 
+        <div class="queue-section" id="my-waiting-section" style="display:none">
+            <h2><span aria-hidden="true">⏳</span> Mis canciones en espera</h2>
+            <p class="waiting-sub">El admin decidirá cuáles pasan a la cola.</p>
+            <div id="my-waiting-list"></div>
+        </div>
+
         <div class="fingerprint" id="fingerprint-display"></div>
+    </div>
+
+    <div id="name-gate" class="dialog-overlay hidden">
+        <div class="dialog-content">
+            <div class="sheet-handle"></div>
+            <h3>¿Cómo te llamas?</h3>
+            <p class="hint">Tu nombre aparecerá junto a tus canciones. No puede estar repetido en este local.</p>
+            <input type="text" id="name-input" placeholder="Tu nombre" maxlength="30" autocomplete="off"
+                onkeypress="if(event.key==='Enter') submitName()">
+            <div class="error-msg" id="name-error"></div>
+            <div class="dialog-actions">
+                <button class="btn-confirm" id="name-submit-btn" onclick="submitName()">Entrar</button>
+            </div>
+        </div>
     </div>
 
     <script>
         const API_URL = window.location.origin;
         let venueId = null;
         let deviceFingerprint = localStorage.getItem('sq_fingerprint') || generateFingerprint();
+        let displayName = localStorage.getItem('sq_display_name') || '';
         let ws = null;
+        let venueRequiresApproval = true;
+        let lastNowPlayingId = null;
 
         function generateFingerprint() {
             const canvas = document.createElement('canvas');
@@ -98,7 +85,7 @@
         async function init() {
             venueId = getVenueId();
             if (!venueId) {
-                document.getElementById('venue-name').textContent = 'Error: No se especifico un local';
+                document.getElementById('venue-name').textContent = 'Falta el local — escanea el QR del bar';
                 return;
             }
             document.getElementById('fingerprint-display').textContent = 'Device: ' + deviceFingerprint;
@@ -106,9 +93,88 @@
                 const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`);
                 const venue = await res.json();
                 document.getElementById('venue-name').textContent = venue.name;
+                document.getElementById('queue-title').textContent = `Cola en ${venue.name}`;
+                venueRequiresApproval = venue.require_approval !== false;
+                document.getElementById('approval-hint').textContent = venueRequiresApproval
+                    ? 'Tus canciones pasan por lista de espera: el admin decide cuáles suenan.'
+                    : 'Tus canciones entran directo a la cola.';
             } catch (e) { console.error(e); }
+            const named = await ensureName();
+            if (!named) return;
             loadQueue();
+            loadMyWaiting();
             connectWebSocket();
+            if (window.SQMotion) SQMotion.pressable(document);
+        }
+
+        async function registerName(name) {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/venues/${venueId}/register-name`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ display_name: name, device_fingerprint: deviceFingerprint }),
+                });
+                if (res.ok) return { ok: true };
+                if (res.status === 409) return { ok: false, taken: true };
+                const err = await res.json().catch(() => ({}));
+                return { ok: false, error: err.detail || 'Error al registrar el nombre' };
+            } catch (e) {
+                return { ok: false, error: 'Error de conexión' };
+            }
+        }
+
+        function openNameGate() {
+            const ov = document.getElementById('name-gate');
+            document.getElementById('name-error').textContent = '';
+            document.getElementById('name-input').value = displayName;
+            ov.classList.remove('hidden');
+            if (window.SQMotion) SQMotion.openSheet(ov);
+            setTimeout(() => document.getElementById('name-input').focus(), 100);
+        }
+
+        function closeNameGate() {
+            const ov = document.getElementById('name-gate');
+            if (window.SQMotion) SQMotion.closeSheet(ov);
+            else ov.classList.add('hidden');
+        }
+
+        async function ensureName() {
+            if (displayName) {
+                const r = await registerName(displayName);
+                if (r.ok) return true;
+                if (!r.taken) return true; // fallo de red: seguir con el nombre guardado
+                displayName = '';
+                localStorage.removeItem('sq_display_name');
+            }
+            return new Promise((resolve) => {
+                window._nameResolve = resolve;
+                openNameGate();
+            });
+        }
+
+        async function submitName() {
+            const input = document.getElementById('name-input');
+            const errEl = document.getElementById('name-error');
+            const btn = document.getElementById('name-submit-btn');
+            const name = input.value.trim();
+            if (!name) { errEl.textContent = 'Escribe tu nombre para entrar'; return; }
+            btn.disabled = true;
+            const r = await registerName(name);
+            btn.disabled = false;
+            if (r.ok) {
+                displayName = name;
+                localStorage.setItem('sq_display_name', name);
+                closeNameGate();
+                if (window._nameResolve) { window._nameResolve(true); window._nameResolve = null; }
+                loadQueue();
+                loadMyWaiting();
+                connectWebSocket();
+            } else if (r.taken) {
+                errEl.textContent = 'Ese nombre ya está en uso, elige otro';
+                input.select();
+            } else {
+                errEl.textContent = r.error || 'Error al registrar el nombre';
+            }
         }
 
         function connectWebSocket() {
@@ -119,8 +185,8 @@
             };
             ws.onmessage = (event) => {
                 const msg = JSON.parse(event.data);
-                if (msg.type === 'queue_updated') renderQueue(msg.data);
-                else if (msg.type === 'now_playing') loadQueue();
+                if (msg.type === 'queue_updated') { renderQueue(msg.data); loadMyWaiting(); }
+                else if (msg.type === 'now_playing') { loadQueue(); loadMyWaiting(); }
             };
             ws.onclose = () => setTimeout(connectWebSocket, 3000);
         }
@@ -131,8 +197,9 @@
 
             const btn = document.getElementById('search-btn');
             btn.disabled = true;
-            btn.textContent = 'Buscando...';
-            document.getElementById('search-results').innerHTML = '<div class="loading">Buscando en YouTube...</div>';
+            btn.textContent = 'Buscando…';
+            document.getElementById('search-results').innerHTML =
+                '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
 
             try {
                 const res = await fetch(`${API_URL}/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=10`);
@@ -144,12 +211,14 @@
                 }
                 const songs = await res.json();
                 if (!songs || songs.length === 0) {
-                    document.getElementById('search-results').innerHTML = '<div class="empty">No se encontraron resultados para <b>"' + escapeHtml(query) + '"</b>. Intenta con otra busqueda.</div>';
+                    document.getElementById('search-results').innerHTML =
+                        '<div class="empty">No se encontraron resultados para <b>"' + escapeHtml(query) +
+                        '"</b>. Intenta con otra búsqueda.<br><button class="btn" onclick="document.getElementById(\'search-input\').focus()">Reintentar</button></div>';
                     return;
                 }
                 renderSearchResults(songs, query);
             } catch (e) {
-                showMessage('Error de conexion al buscar', 'error');
+                showMessage('Error de conexión al buscar', 'error');
                 document.getElementById('search-results').innerHTML = '';
             } finally {
                 btn.disabled = false;
@@ -171,21 +240,25 @@
 
             html += songs.map(song => `
                 <div class="song-card">
-                    <img src="${song.thumbnail_url || 'https://via.placeholder.com/96x72?text=No+Img'}" alt="" onerror="this.src='https://via.placeholder.com/96x72?text=No+Img'">
+                    <img src="${song.thumbnail_url || 'https://via.placeholder.com/96x72?text=No+Img'}" alt="" loading="lazy" onerror="this.src='https://via.placeholder.com/96x72?text=No+Img'">
                     <div class="song-info">
                         <h3>${escapeHtml(song.title)} ${song.title.toLowerCase().includes(query.toLowerCase()) || song.channel.toLowerCase().includes(query.toLowerCase()) ? '' : '<span class="demo-badge">demo</span>'}</h3>
                         <p>${escapeHtml(song.channel || 'Unknown')}</p>
                     </div>
-                    <button class="add-btn" onclick="addToQueue('${song.youtube_id}', '${escapeHtml(song.title).replace(/'/g, "\\'")}', '${escapeHtml(song.channel || '').replace(/'/g, "\\'")}', '${(song.thumbnail_url || '').replace(/'/g, "\\'")}', ${song.duration_seconds || 'null'}, this)">Agregar</button>
+                    <button class="btn btn-ok btn-add" onclick="addToQueue('${song.youtube_id}', '${escapeHtml(song.title).replace(/'/g, "\\'")}', '${escapeHtml(song.channel || '').replace(/'/g, "\\'")}', '${(song.thumbnail_url || '').replace(/'/g, "\\'")}', ${song.duration_seconds || 'null'}, this)">Agregar</button>
                 </div>
             `).join('');
 
             container.innerHTML = html;
+            if (window.SQMotion) {
+                SQMotion.staggerIn(container.querySelectorAll('.song-card'));
+                SQMotion.pressable(container);
+            }
         }
 
         async function addToQueue(youtubeId, title, channel, thumbnailUrl, durationSeconds, btn) {
             btn.disabled = true;
-            btn.textContent = '...';
+            btn.textContent = '…';
 
             try {
                 const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
@@ -194,7 +267,7 @@
                     body: JSON.stringify({
                         youtube_id: youtubeId,
                         device_fingerprint: deviceFingerprint,
-                        requested_by: 'Cliente',
+                        requested_by: displayName || 'Cliente',
                         title: title,
                         channel: channel,
                         thumbnail_url: thumbnailUrl,
@@ -203,16 +276,23 @@
                 });
 
                 if (res.ok) {
-                    showMessage('Cancion agregada a la cola', 'success');
+                    const data = await res.json();
+                    if (navigator.vibrate) navigator.vibrate(10);
                     document.getElementById('search-results').innerHTML = '';
                     document.getElementById('search-input').value = '';
-                    loadQueue();
+                    if (data.status === 'waiting') {
+                        showMessage('En lista de espera: el admin decidirá si suena', 'info');
+                        loadMyWaiting();
+                    } else {
+                        showMessage('Canción agregada a la cola', 'success');
+                        loadQueue();
+                    }
                 } else {
                     const err = await res.json();
                     showMessage(err.detail || 'Error al agregar', 'error');
                 }
             } catch (e) {
-                showMessage('Error de conexion', 'error');
+                showMessage('Error de conexión', 'error');
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Agregar';
@@ -232,8 +312,23 @@
             let html = '';
             if (data.now_playing) html += renderQueueItem(data.now_playing, 0, true);
             if (data.upcoming && data.upcoming.length) html += data.upcoming.map((q, i) => renderQueueItem(q, i + 1, false)).join('');
-            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div class="empty">La cola esta vacia. Se el primero en agregar una cancion!</div>';
+            if (!data.now_playing && (!data.upcoming || !data.upcoming.length))
+                html = '<div class="empty">La cola está vacía. ¡Sé el primero en agregar una canción!<br><button class="btn btn-primary" onclick="document.getElementById(\'search-input\').focus()">Buscar canción</button></div>';
             container.innerHTML = html;
+            if (window.SQMotion) SQMotion.staggerIn(container.querySelectorAll('.queue-item'));
+            // Aviso cuando la canción propia empieza a sonar (solo en el cambio)
+            if (data.now_playing && data.now_playing.song) {
+                const npId = data.now_playing.id;
+                if (npId !== lastNowPlayingId) {
+                    lastNowPlayingId = npId;
+                    if (displayName && data.now_playing.requested_by === displayName) {
+                        showMessage('¡Tu canción está sonando!', 'success');
+                        if (navigator.vibrate) navigator.vibrate([15, 50, 15]);
+                    }
+                }
+            } else {
+                lastNowPlayingId = null;
+            }
         }
 
         function renderQueueItem(item, position, isPlaying) {
@@ -241,7 +336,7 @@
             return `
                 <div class="queue-item ${isPlaying ? 'playing' : ''}">
                     <div class="pos">${isPlaying ? '&#9654;' : position}</div>
-                    <img src="${song.thumbnail_url || ''}" alt="" onerror="this.style.display='none'">
+                    <img src="${song.thumbnail_url || ''}" alt="" loading="lazy" onerror="this.style.display='none'">
                     <div class="queue-info">
                         <h4>${escapeHtml(song.title || 'Desconocido')}</h4>
                         <p>${escapeHtml(song.channel || '')} ${item.requested_by ? '• Pedido por: ' + escapeHtml(item.requested_by) : ''}</p>
@@ -253,8 +348,40 @@
 
         function showMessage(text, type) {
             const el = document.getElementById('message');
-            el.innerHTML = `<div class="${type}">${text}</div>`;
-            setTimeout(() => el.innerHTML = '', 4000);
+            el.innerHTML = `<div class="msg ${type}">${text}</div>`;
+            if (window.SQMotion) SQMotion.toast(el.firstChild);
+            clearTimeout(el._t);
+            el._t = setTimeout(() => el.innerHTML = '', 4000);
+        }
+
+        async function loadMyWaiting() {
+            if (!venueId) return;
+            try {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/waiting/mine?device_fingerprint=${encodeURIComponent(deviceFingerprint)}`);
+                const data = await res.json();
+                const section = document.getElementById('my-waiting-section');
+                const list = document.getElementById('my-waiting-list');
+                if (data.waiting && data.waiting.length) {
+                    section.style.display = 'block';
+                    list.innerHTML = data.waiting.map(item => {
+                        const song = item.song || {};
+                        return `
+                            <div class="queue-item">
+                                <img src="${song.thumbnail_url || ''}" alt="" loading="lazy" onerror="this.style.display='none'">
+                                <div class="queue-info">
+                                    <h4>${escapeHtml(song.title || 'Desconocido')}</h4>
+                                    <p>${escapeHtml(song.channel || '')}</p>
+                                </div>
+                                <span class="status-badge status-pending">En espera</span>
+                            </div>
+                        `;
+                    }).join('');
+                    if (window.SQMotion) SQMotion.staggerIn(list.querySelectorAll('.queue-item'));
+                } else {
+                    section.style.display = 'none';
+                    list.innerHTML = '';
+                }
+            } catch (e) { console.error(e); }
         }
 
         function escapeHtml(text) {

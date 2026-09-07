@@ -49,12 +49,12 @@ async def get_or_create_device(
 
 
 async def can_device_add_song(db: AsyncSession, venue_id: int, fingerprint: str, max_songs: int) -> bool:
-    """Verifica si un dispositivo puede agregar más canciones."""
+    """Verifica si un dispositivo puede agregar más canciones (cola + espera)."""
     result = await db.execute(
         select(func.count(QueueItem.id)).where(
             QueueItem.venue_id == venue_id,
             QueueItem.device_fingerprint == fingerprint,
-            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING, QueueStatus.WAITING]),
         )
     )
     active_count = result.scalar() or 0
@@ -62,12 +62,12 @@ async def can_device_add_song(db: AsyncSession, venue_id: int, fingerprint: str,
 
 
 async def get_device_active_count(db: AsyncSession, venue_id: int, fingerprint: str) -> int:
-    """Retorna cuántas canciones activas tiene un dispositivo en la cola."""
+    """Retorna cuántas canciones activas tiene un dispositivo (cola + espera)."""
     result = await db.execute(
         select(func.count(QueueItem.id)).where(
             QueueItem.venue_id == venue_id,
             QueueItem.device_fingerprint == fingerprint,
-            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING]),
+            QueueItem.status.in_([QueueStatus.PENDING, QueueStatus.PLAYING, QueueStatus.WAITING]),
         )
     )
     return result.scalar() or 0

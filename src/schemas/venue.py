@@ -18,6 +18,7 @@ class VenueCreate(VenueBase):
     max_songs_per_device: int = Field(default=3, ge=1, le=20)
     max_queue_size: int = Field(default=50, ge=5, le=200)
     allow_duplicates: bool = False
+    require_approval: bool = True
 
 
 class VenueConfigUpdate(BaseModel):
@@ -28,6 +29,7 @@ class VenueConfigUpdate(BaseModel):
     max_queue_size: int | None = Field(None, ge=5, le=200)
     allow_duplicates: bool | None = None
     is_active: bool | None = None
+    require_approval: bool | None = None
 
 
 class VenueResponse(VenueBase):
@@ -40,6 +42,7 @@ class VenueResponse(VenueBase):
     max_queue_size: int
     allow_duplicates: bool
     is_active: bool
+    require_approval: bool
     qr_token: str
     created_at: datetime
     updated_at: datetime

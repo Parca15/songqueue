@@ -18,6 +18,7 @@ class QueueStatus(str, PyEnum):
     PLAYED = "played"
     SKIPPED = "skipped"
     REMOVED = "removed"
+    WAITING = "waiting"  # En lista de espera, pendiente de aprobación del admin
 
 
 class QueueItem(Base):

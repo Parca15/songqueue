@@ -2,253 +2,113 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SongQueue - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#0b0b12" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+    <title>SongQueue — Admin</title>
+    <link rel="stylesheet" href="design-system.css">
+    <script src="https://cdn.jsdelivr.net/npm/motion@11/dist/motion.js" defer></script>
+    <script src="motion.js" defer></script>
     <style>
-        :root {
-            --accent: #e91e63;
-            --accent-2: #ff5722;
-            --bg: #0b0b12;
-            --card: #16161f;
-            --card-hover: #1d1d28;
-            --border: #262633;
-            --text-dim: #88889a;
-            --green: #22c55e;
-            --blue: #3b82f6;
-            --orange: #f97316;
-            --purple: #a855f7;
-            --red: #ef4444;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: radial-gradient(circle at top left, #1a0f24, #0b0b12 45%); color: #fff; min-height: 100vh; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 28px 24px; }
-
-        header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid #222; margin-bottom: 28px; }
-        header h1 { font-size: 2rem; background: linear-gradient(135deg, #e91e63, #ff5722); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        header .venue-tag { font-size: 16px; color: #999; background: rgba(255,255,255,0.06); padding: 8px 18px; border-radius: 24px; border: 1px solid #2a2a3a; backdrop-filter: blur(6px); }
-        .logout-btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #f44336; background: transparent; color: #f44336; font-size: 15px; cursor: pointer; transition: all .2s; }
-        .logout-btn:hover { background: #f44336; color: #fff; }
-
-        .login-form { max-width: 440px; margin: 100px auto; padding: 40px; background: #14141d; border-radius: 18px; border: 1px solid #222; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
-        .login-form h2 { margin-bottom: 28px; text-align: center; font-size: 1.5rem; }
-        .login-form input { width: 100%; padding: 16px 20px; margin-bottom: 16px; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; transition: border-color .2s; }
-        .login-form input:focus { outline: none; border-color: #e91e63; box-shadow: 0 0 0 3px rgba(233,30,99,.15); }
-        .login-form button { width: 100%; padding: 16px; border-radius: 12px; border: none; background: linear-gradient(135deg, #e91e63, #c2185b); color: #fff; font-size: 18px; cursor: pointer; font-weight: 600; transition: transform .15s, box-shadow .15s; }
-        .login-form button:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 10px 30px rgba(233,30,99,.35); }
-        .hidden { display: none !important; }
-
-        .panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card { background: var(--card); border: 1px solid var(--border, #222); border-radius: 16px; padding: 24px; transition: border-color .2s, transform .15s; }
-        .card:hover { border-color: #2e2e3f; }
-        .card h3 { font-size: 1rem; margin-bottom: 18px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 0 !important; }
-        .full-width { grid-column: 1 / -1; }
-
-        .top-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-        .qr-card { text-align: center; }
-        .qr-card img { width: 200px; height: 200px; margin: 14px 0; border-radius: 14px; border: 3px solid #2a2a3a; }
-        .qr-card .qr-link { display: block; color: var(--accent); text-decoration: none; font-size: 14px; margin-bottom: 16px; word-break: break-all; }
-        .video-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; font-size: 16px; cursor: pointer; font-weight: 600; transition: transform .15s, box-shadow .15s; }
-        .video-btn:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 10px 28px rgba(232,58,97,.35); }
-
-        .stat-row { display: flex; gap: 12px; }
-        .stat-box { flex: 1; background: var(--card); padding: 18px 14px; border-radius: 12px; text-align: center; border: 1px solid var(--border, #222); transition: transform .15s; }
-        .stat-box:hover { transform: translateY(-2px); }
-        .stat-box .number { font-size: 2.2rem; font-weight: 700; color: var(--accent); }
-        .stat-box .label { font-size: 13px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        .config-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #1a1a1a; }
-        .config-row:last-child { border-bottom: none; }
-        .config-row label { color: #999; font-size: 15px; }
-        .config-row input[type="number"] { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px 14px; border-radius: 8px; width: 90px; text-align: center; font-size: 15px; }
-        .config-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: #e91e63; }
-        .btn-save { margin-top: 18px; width: 100%; padding: 14px; border-radius: 10px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-weight: 600; font-size: 16px; }
-        .btn-save:hover { background: #45a049; }
-
-        .search-box { display: flex; gap: 10px; margin-bottom: 16px; }
-        .search-box input { flex: 1; padding: 14px 18px; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; }
-        .search-box input:focus { outline: none; border-color: #e91e63; }
-        .search-box button { padding: 14px 28px; border-radius: 12px; border: none; background: #e91e63; color: #fff; cursor: pointer; font-weight: 600; font-size: 16px; }
-        .search-results { max-height: 450px; overflow-y: auto; }
-        .search-results::-webkit-scrollbar { width: 8px; }
-        .search-results::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-
-        .song-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); transition: border-color .2s, transform .15s; }
-        .song-card:hover { border-color: #2e2e3f; transform: translateX(2px); }
-        .song-card img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
-        .song-card .info { flex: 1; min-width: 0; }
-        .song-card .info h4 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .song-card .info p { font-size: 13px; color: var(--text-dim); }
-        .song-card .actions { display: flex; gap: 6px; flex-shrink: 0; }
-        .song-card .actions button { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; transition: filter .15s, transform .15s; }
-        .song-card .actions button:hover { filter: brightness(1.1); transform: translateY(-1px); }
-        .btn-add-queue { background: var(--green); color: #fff; }
-        .btn-add-queue:hover { background: #16a34a; }
-        .btn-add-playlist { background: var(--blue); color: #fff; }
-        .btn-add-playlist:hover { background: #2563eb; }
-
-        .tabs { display: flex; gap: 4px; margin-bottom: 18px; background: var(--card); border-radius: 12px; padding: 4px; }
-        .tab-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; background: transparent; color: var(--text-dim); cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
-        .tab-btn:hover { color: #ccc; }
-        .tab-btn.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(233,30,99,.35); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .queue-item-admin { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); transition: border-color .2s, transform .15s; }
-        .queue-item-admin:hover { border-color: #2a2a3a; }
-        .queue-item-admin.playing { border-color: var(--accent); background: linear-gradient(135deg, #2a1520, var(--card)); box-shadow: 0 0 16px rgba(233,30,99,.15); }
-        .queue-item-admin img { width: 72px; height: 54px; border-radius: 8px; object-fit: cover; }
-        .queue-item-admin .pos { width: 32px; text-align: center; font-size: 15px; font-weight: 700; color: #666; }
-        .queue-item-admin.playing .pos { color: #e91e63; }
-        .queue-item-admin .info { flex: 1; min-width: 0; }
-        .queue-item-admin .info h4 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .queue-item-admin .info p { font-size: 13px; color: #666; }
-        .queue-item-admin .actions { display: flex; gap: 6px; flex-shrink: 0; }
-        .queue-item-admin .actions button { padding: 8px 14px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; transition: filter .15s, transform .15s; }
-        .queue-item-admin .actions button:hover { filter: brightness(1.1); transform: translateY(-1px); }
-        .btn-play { background: var(--blue); color: #fff; }
-        .btn-skip { background: var(--orange); color: #fff; }
-        .btn-remove { background: var(--red); color: #fff; }
-        .btn-move { background: var(--purple); color: #fff; }
-
-        .playlist-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); }
-        .playlist-item img { width: 60px; height: 46px; border-radius: 8px; object-fit: cover; }
-        .playlist-item .info { flex: 1; }
-        .playlist-item .info h4 { font-size: 15px; }
-        .playlist-item .info p { font-size: 13px; color: var(--text-dim); }
-        .playlist-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 10px; background: var(--card); margin-bottom: 8px; border: 1px solid var(--border, #222); transition: border-color .2s, transform .15s; }
-        .playlist-card:hover { border-color: #2e2e3f; }
-        .playlist-card .info { flex: 1; }
-        .playlist-card .info h4 { font-size: 16px; }
-        .playlist-card .info p { font-size: 14px; color: var(--text-dim); }
-        .playlist-card .actions { display: flex; gap: 6px; }
-        .playlist-card .actions button { padding: 10px 16px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; font-weight: 600; transition: filter .15s; }
-        .playlist-card .actions button:hover { filter: brightness(1.1); }
-        .btn-playlist { background: var(--green); color: #fff; }
-        .btn-view { background: var(--blue); color: #fff; }
-        .btn-delete { background: var(--red); color: #fff; }
-
-        .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
-        .dialog-content { background: var(--card); padding: 32px; border-radius: 16px; border: 1px solid #2a2a3a; min-width: 360px; box-shadow: 0 24px 80px rgba(0,0,0,.6); }
-        .dialog-content h3 { margin-bottom: 20px; color: var(--accent); font-size: 1.3rem; }
-        .dialog-content input { width: 100%; padding: 14px 18px; margin-bottom: 16px; border-radius: 10px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 16px; transition: border-color .2s; }
-        .dialog-content input:focus { outline: none; border-color: var(--accent); }
-        .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; }
-        .dialog-actions button { padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px; cursor: pointer; font-weight: 600; transition: filter .15s; }
-        .dialog-actions button:hover { filter: brightness(1.1); }
-        .btn-cancel { background: #333; color: #fff; }
-        .btn-confirm { background: var(--green); color: #fff; }
-
-        .empty-msg { color: #555; padding: 32px; text-align: center; font-size: 16px; }
-        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .btn-new { padding: 10px 20px; border-radius: 10px; border: none; background: #4caf50; color: #fff; cursor: pointer; font-size: 15px; font-weight: 600; }
-        .error { background: #2a1515; color: #ff6b6b; padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; font-size: 15px; border: 1px solid #3a1a1a; }
-        .success { background: #152a15; color: #6bff6b; padding: 14px 18px; border-radius: 12px; margin-bottom: 16px; font-size: 15px; border: 1px solid #1a3a1a; }
-
-        /* Scroll suave */
-        html { scroll-behavior: smooth; }
-
-        /* Overlay scrollable (para muchos resultados de playlist) */
-        .dialog-content { max-height: 90vh; overflow-y: auto; }
-        .search-results, #queue-list-admin, #playlists-list, #playlist-detail-items, #add-to-playlist-list { max-height: 60vh; overflow-y: auto; }
-
-        /* Tabs sticky */
-        .tabs { position: sticky; top: 0; background: var(--card); z-index: 5; border-bottom: 1px solid var(--border, #222); }
-        .tab-content { max-height: 70vh; overflow-y: auto; }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-            .top-row { grid-template-columns: 1fr; }
-            .panel { grid-template-columns: 1fr; }
-            header { flex-wrap: wrap; gap: 10px; }
-            .qr-card button { width: 100%; }
-        }
-        @media (max-width: 600px) {
-            .container { padding: 16px; }
-            header h1 { font-size: 1.5rem; }
-            .song-card, .queue-item-admin { flex-wrap: wrap; }
-            .song-card .actions, .queue-item-admin .actions { width: 100%; justify-content: flex-end; }
-            .stat-row { flex-direction: row; flex-wrap: wrap; gap: 12px; }
-        }
+        /* Solo específico de admin no cubierto por el sistema */
+        .logout-btn { padding: 0.625rem 1.25rem; border-radius: 10px; border: 1px solid var(--red); background: transparent; color: var(--red); font-size: 0.95rem; cursor: pointer; font-weight: 600; transition: all var(--dur-fast) ease; }
+        .logout-btn:hover { background: var(--red); color: #fff; }
+        .logout-btn:active { transform: scale(0.97); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }
+        .section-header h3 { margin: 0; }
+        .dialog-content input { width: 100%; margin-bottom: 1rem; }
+        .playlist-detail-bar { margin-bottom: 0.875rem; display: flex; align-items: center; gap: 0.875rem; }
+        #playlist-detail-name { font-weight: 600; font-size: 1rem; }
+        .sheet-handle { width: 2.5rem; height: 0.3rem; border-radius: 999px; background: var(--border-strong); margin: 0 auto 1rem; }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>SongQueue</h1>
-            <span id="venue-name" class="venue-tag">Panel de administracion</span>
-            <button id="logout-btn" class="logout-btn hidden" onclick="logout()">Cerrar sesion</button>
+        <header class="app-header">
+            <h1 class="display" style="font-size:1.6rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">SongQueue</h1>
+            <span id="venue-name" class="venue-tag">Panel de administración</span>
+            <button id="logout-btn" class="logout-btn hidden" onclick="logout()">Cerrar sesión</button>
         </header>
-        <div id="message"></div>
+        <div id="message" aria-live="polite"></div>
         <div id="login-section" class="login-form">
-            <h2>Iniciar Sesion</h2>
-            <input type="text" id="username" placeholder="Usuario" onkeypress="if(event.key==='Enter')login()">
-            <input type="password" id="password" placeholder="Contrasena" onkeypress="if(event.key==='Enter')login()">
-            <button onclick="login()">Entrar</button>
+            <h2>Iniciar sesión</h2>
+            <p class="hint">Accede para gestionar la cola del local</p>
+            <input type="text" id="username" placeholder="Usuario" autocomplete="username" onkeypress="if(event.key==='Enter')login()">
+            <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" onkeypress="if(event.key==='Enter')login()">
+            <button class="btn btn-primary" style="width:100%" onclick="login()">Entrar</button>
         </div>
-        <div id="admin-panel" class="panel hidden">
+        <div id="admin-panel" class="panel-grid hidden">
             <div class="top-row">
-                <div class="card qr-card">
-                    <h3>QR del Cliente</h3>
+                <div class="card panel-card qr-card">
+                    <h3>QR del cliente</h3>
                     <img id="qr-image" src="" alt="QR Code">
                     <a id="qr-link" href="#" target="_blank" class="qr-link"></a>
-                    <button class="video-btn" onclick="openPlayer()">&#9654; Abrir Reproductor</button>
+                    <button class="btn btn-primary" onclick="openPlayer()">&#9654; Abrir reproductor</button>
                 </div>
-                <div class="card">
-                    <h3>Estadisticas</h3>
-                    <div class="stat-row" style="flex-direction:column;gap:10px;">
+                <div class="card panel-card">
+                    <h3>Estadísticas</h3>
+                    <div class="stat-row col">
                         <div class="stat-box"><div class="number" id="stat-pending">0</div><div class="label">En cola</div></div>
                         <div class="stat-box"><div class="number" id="stat-played">0</div><div class="label">Reproducidas</div></div>
                         <div class="stat-box"><div class="number" id="stat-devices">0</div><div class="label">Dispositivos</div></div>
                     </div>
                 </div>
-                <div class="card">
-                    <h3>Configuracion</h3>
+                <div class="card panel-card">
+                    <h3>Configuración</h3>
                     <div class="config-row"><label>Max canciones/dispositivo</label><input type="number" id="cfg-max-songs" min="1" max="20"></div>
-                    <div class="config-row"><label>Max tamano cola</label><input type="number" id="cfg-max-queue" min="5" max="200"></div>
+                    <div class="config-row"><label>Max tamaño cola</label><input type="number" id="cfg-max-queue" min="5" max="200"></div>
                     <div class="config-row"><label>Permitir duplicados</label><input type="checkbox" id="cfg-duplicates"></div>
+                    <div class="config-row"><label>Todo a lista de espera</label><input type="checkbox" id="cfg-require-approval"></div>
                     <div class="config-row"><label>Local activo</label><input type="checkbox" id="cfg-active"></div>
-                    <button class="btn-save" onclick="saveConfig()">Guardar Cambios</button>
+                    <button class="btn btn-ok btn-save" style="margin-top:1.1rem;width:100%" onclick="saveConfig()">Guardar cambios</button>
                 </div>
             </div>
-            <div class="card full-width">
-                <h3>Buscar Canciones</h3>
-                <div class="search-box">
-                    <input type="text" id="admin-search-input" placeholder="Buscar en YouTube..." onkeypress="if(event.key==='Enter') adminSearchSongs()">
-                    <button onclick="adminSearchSongs()">Buscar</button>
+            <div class="card panel-card full-width">
+                <h3>Buscar canciones</h3>
+                <div class="search-box" style="position:static">
+                    <input type="text" id="admin-search-input" placeholder="Buscar en YouTube…" aria-label="Buscar en YouTube" onkeypress="if(event.key==='Enter') adminSearchSongs()">
+                    <button class="btn-primary" onclick="adminSearchSongs()">Buscar</button>
                 </div>
-                <div id="admin-search-results" class="search-results"></div>
+                <div id="admin-search-results" class="results scroll-area"></div>
             </div>
-            <div class="card full-width">
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('queue')">Cola Actual</button>
-                    <button class="tab-btn" onclick="switchTab('playlists')">Playlists</button>
+            <div class="card panel-card full-width">
+                <div class="tabs" role="tablist">
+                    <button class="tab-btn active" role="tab" onclick="switchTab('queue')">Cola actual</button>
+                    <button class="tab-btn" role="tab" onclick="switchTab('waiting')">Espera <span id="waiting-badge" class="badge zero">0</span></button>
+                    <button class="tab-btn" role="tab" onclick="switchTab('playlists')">Playlists</button>
                 </div>
                 <div id="tab-queue" class="tab-content active">
-                    <div style="margin-bottom:14px;"><button class="btn-skip" onclick="skipSong()">Saltar Cancion</button></div>
-                    <div id="queue-list-admin"></div>
+                    <div style="margin-bottom:0.875rem;"><button class="btn btn-warning" onclick="skipSong()">Saltar canción</button></div>
+                    <div id="queue-list-admin" class="scroll-area"></div>
+                </div>
+                <div id="tab-waiting" class="tab-content">
+                    <p class="waiting-sub">Canciones pedidas por clientes pendientes de tu aprobación.</p>
+                    <div id="waiting-list-admin" class="scroll-area"></div>
                 </div>
                 <div id="tab-playlists" class="tab-content">
                     <div class="section-header">
-                        <h3 style="color:#e91e63;font-size:1rem;text-transform:uppercase;letter-spacing:1px;margin:0;">Mis Playlists</h3>
-                        <button class="btn-new" onclick="openNewPlaylistDialog()">+ Nueva</button>
+                        <h3>Mis playlists</h3>
+                        <button class="btn btn-ok btn-new" onclick="openNewPlaylistDialog()">+ Nueva</button>
                     </div>
-                    <div id="playlists-list"></div>
+                    <div id="playlists-list" class="scroll-area"></div>
                     <div id="playlist-detail" class="hidden">
-                        <div style="margin-bottom:14px;display:flex;align-items:center;gap:14px;">
-                            <button class="btn-cancel" onclick="closePlaylistDetail()" style="padding:8px 14px;font-size:14px;">&larr; Volver</button>
-                            <span id="playlist-detail-name" style="font-weight:600;font-size:16px;"></span>
-                            <button class="btn-playlist" onclick="playCurrentPlaylist()" style="margin-left:auto;padding:10px 18px;font-size:14px;">Reproducir</button>
+                        <div class="playlist-detail-bar">
+                            <button class="btn btn-cancel" onclick="closePlaylistDetail()" style="padding:0.5rem 0.875rem;font-size:0.875rem;">&larr; Volver</button>
+                            <span id="playlist-detail-name"></span>
+                            <button class="btn btn-ok" onclick="playCurrentPlaylist()" style="margin-left:auto;padding:0.625rem 1.1rem;font-size:0.875rem;">Reproducir</button>
                         </div>
-                        <div id="playlist-detail-items"></div>
+                        <div id="playlist-detail-items" class="scroll-area"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div id="move-dialog" class="dialog-overlay hidden">
-        <div class="dialog-content">
-            <h3>Mover a Posicion</h3>
-            <input type="number" id="move-position-input" min="1" placeholder="Posicion">
+        <div class="dialog-content" id="move-sheet">
+            <div class="sheet-handle"></div>
+            <h3>Mover a posición</h3>
+            <input type="number" id="move-position-input" min="1" placeholder="Posición">
             <div class="dialog-actions">
                 <button class="btn-cancel" onclick="closeMoveDialog()">Cancelar</button>
                 <button class="btn-confirm" onclick="confirmMove()">Mover</button>
@@ -256,8 +116,9 @@
         </div>
     </div>
     <div id="new-playlist-dialog" class="dialog-overlay hidden">
-        <div class="dialog-content">
-            <h3>Nueva Playlist</h3>
+        <div class="dialog-content" id="newpl-sheet">
+            <div class="sheet-handle"></div>
+            <h3>Nueva playlist</h3>
             <input type="text" id="new-playlist-name" placeholder="Nombre de la playlist" onkeypress="if(event.key==='Enter')createPlaylist()">
             <div class="dialog-actions">
                 <button class="btn-cancel" onclick="closeNewPlaylistDialog()">Cancelar</button>
@@ -266,10 +127,11 @@
         </div>
     </div>
     <div id="add-to-playlist-dialog" class="dialog-overlay hidden">
-        <div class="dialog-content">
-            <h3>Agregar a Playlist</h3>
-            <div id="add-to-playlist-list"></div>
-            <div class="dialog-actions" style="margin-top:14px;">
+        <div class="dialog-content" id="addpl-sheet">
+            <div class="sheet-handle"></div>
+            <h3>Agregar a playlist</h3>
+            <div id="add-to-playlist-list" class="scroll-area"></div>
+            <div class="dialog-actions" style="margin-top:0.875rem;">
                 <button class="btn-cancel" onclick="closeAddToPlaylistDialog()">Cancelar</button>
             </div>
         </div>
@@ -284,12 +146,22 @@
 
         async function init() {
             if (token && venueId) { showPanel(); }
+            if (window.SQMotion) {
+                SQMotion.pressable(document);
+                ['move-dialog', 'new-playlist-dialog', 'add-to-playlist-dialog'].forEach(id => {
+                    const ov = document.getElementById(id);
+                    const sheet = ov.querySelector('.dialog-content');
+                    SQMotion.makeDraggable(sheet, { onDismiss: () => ov.classList.add('hidden') });
+                    ov.addEventListener('click', (e) => { if (e.target === ov) SQMotion.closeSheet(ov, sheet); });
+                });
+            }
         }
         function showPanel() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
             document.getElementById('logout-btn').classList.remove('hidden');
-            loadVenueData(); loadQueue(); connectWebSocket(); loadPlaylists();
+            loadVenueData(); loadQueue(); loadWaiting(); connectWebSocket(); loadPlaylists();
+            if (window.SQMotion) SQMotion.staggerIn(document.querySelectorAll('#admin-panel .card'));
         }
         function hidePanel() {
             document.getElementById('login-section').classList.remove('hidden');
@@ -310,19 +182,23 @@
                     localStorage.setItem('sq_admin_venue', venueId);
                     showPanel();
                 }
-                else { showMessage('Usuario o contrasena incorrectos', 'error'); }
-            } catch(e) { showMessage('Error de conexion', 'error'); }
+                else { showMessage('Usuario o contraseña incorrectos', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
         }
         async function logout() {
             try { await fetch(`${API_URL}/api/v1/auth/logout`, { method: 'POST', headers: {'Authorization': `Bearer ${token}`} }); } catch(e) {}
-            token = null; venueId = null; localStorage.removeItem('sq_admin_token'); localStorage.removeItem('sq_admin_venue'); hidePanel(); showMessage('Sesion cerrada', 'success');
+            token = null; venueId = null; localStorage.removeItem('sq_admin_token'); localStorage.removeItem('sq_admin_venue'); hidePanel(); showMessage('Sesión cerrada', 'success');
             if (ws) { ws.close(); ws = null; }
         }
         function connectWebSocket() {
             const wsUrl = API_URL.replace('http','ws') + `/ws/venue/${venueId}`;
             ws = new WebSocket(wsUrl);
             ws.onopen = () => ws.send(JSON.stringify({action:'register',role:'admin'}));
-            ws.onmessage = (e) => { const msg = JSON.parse(e.data); if (msg.type === 'queue_updated') renderQueueAdmin(msg.data); };
+            ws.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'queue_updated') renderQueueAdmin(msg.data);
+                else if (msg.type === 'waiting_updated') renderWaitingAdmin(msg.data);
+            };
             ws.onclose = () => setTimeout(connectWebSocket, 3000);
         }
         async function loadVenueData() {
@@ -332,6 +208,7 @@
                 document.getElementById('cfg-max-songs').value = v.max_songs_per_device;
                 document.getElementById('cfg-max-queue').value = v.max_queue_size;
                 document.getElementById('cfg-duplicates').checked = v.allow_duplicates;
+                document.getElementById('cfg-require-approval').checked = v.require_approval !== false;
                 document.getElementById('cfg-active').checked = v.is_active;
                 const qrRes = await fetch(`${API_URL}/api/v1/venues/${venueId}/qr?base_url=${encodeURIComponent(API_URL)}`, {headers:{'Authorization':`Bearer ${token}`}});
                 const qr = await qrRes.json(); document.getElementById('qr-image').src = qr.qr_base64;
@@ -343,9 +220,9 @@
             window.open(`${API_URL}/player.html?venue=${venueId}`, '_blank', 'width=1280,height=720');
         }
         async function saveConfig() {
-            const updates = { max_songs_per_device: parseInt(document.getElementById('cfg-max-songs').value), max_queue_size: parseInt(document.getElementById('cfg-max-queue').value), allow_duplicates: document.getElementById('cfg-duplicates').checked, is_active: document.getElementById('cfg-active').checked };
+            const updates = { max_songs_per_device: parseInt(document.getElementById('cfg-max-songs').value), max_queue_size: parseInt(document.getElementById('cfg-max-queue').value), allow_duplicates: document.getElementById('cfg-duplicates').checked, require_approval: document.getElementById('cfg-require-approval').checked, is_active: document.getElementById('cfg-active').checked };
             try { const res = await fetch(`${API_URL}/api/v1/venues/${venueId}`, {method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify(updates)});
-            if (res.ok) showMessage('Configuracion guardada', 'success'); else showMessage('Error', 'error'); } catch(e) {}
+            if (res.ok) { showMessage('Configuración guardada', 'success'); if (navigator.vibrate) navigator.vibrate(10); } else showMessage('Error', 'error'); } catch(e) {}
         }
         async function loadQueue() { try { const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}`); renderQueueAdmin(await res.json()); } catch(e) {} }
         function renderQueueAdmin(data) {
@@ -353,19 +230,20 @@
             const c = document.getElementById('queue-list-admin'); let html = '';
             if (data.now_playing) html += renderQueueItem(data.now_playing, 0, true);
             if (data.upcoming && data.upcoming.length) html += data.upcoming.map((it, i) => renderQueueItem(it, i+1, false)).join('');
-            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div class="empty-msg">Cola vacia</div>';
+            if (!data.now_playing && (!data.upcoming || !data.upcoming.length)) html = '<div class="empty-msg">Cola vacía — busca canciones arriba para empezar</div>';
             c.innerHTML = html;
+            if (window.SQMotion) { SQMotion.staggerIn(c.querySelectorAll('.queue-item-admin')); SQMotion.pressable(c); }
         }
         function renderQueueItem(item, pos, playing) {
             const s = item.song || {};
-            return `<div class="queue-item-admin ${playing?'playing':''}"><div class="pos">${playing?'&#9654;':pos}</div><img src="${s.thumbnail_url||''}" alt=""><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')} &middot; ${item.requested_by||'Anonimo'}</p></div><div class="actions">${!playing?`<button class="btn-play" onclick="playItem(${item.id})">&#9654;</button>`:''}${!playing?`<button class="btn-move" onclick="openMoveDialog(${item.id})">Mover</button>`:''}<button class="btn-remove" onclick="removeItem(${item.id})">&#10005;</button></div></div>`;
+            return `<div class="queue-item-admin ${playing?'playing':''}"><div class="pos">${playing?'&#9654;':pos}</div><img src="${s.thumbnail_url||''}" alt="" loading="lazy"><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')} &middot; ${escapeHtml(item.requested_by||'Anónimo')}</p></div><div class="actions">${!playing?`<button class="btn-play" onclick="playItem(${item.id})">&#9654;</button>`:''}${!playing?`<button class="btn-move" onclick="openMoveDialog(${item.id})">Mover</button>`:''}<button class="btn-remove" onclick="removeItem(${item.id})">&#10005;</button></div></div>`;
         }
         async function playItem(id) { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/play/${id}`, {method:'POST',headers:{'Authorization':`Bearer ${token}`}}); }
         async function skipSong() { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/skip`, {method:'POST',headers:{'Authorization':`Bearer ${token}`}}); }
         async function removeItem(id) { await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/item/${id}`, {method:'DELETE',headers:{'Authorization':`Bearer ${token}`}}); }
         let currentMoveItemId = null;
-        function openMoveDialog(itemId) { currentMoveItemId = itemId; document.getElementById('move-position-input').value = ''; document.getElementById('move-dialog').classList.remove('hidden'); }
-        function closeMoveDialog() { document.getElementById('move-dialog').classList.add('hidden'); currentMoveItemId = null; }
+        function openMoveDialog(itemId) { currentMoveItemId = itemId; document.getElementById('move-position-input').value = ''; const ov = document.getElementById('move-dialog'); if (window.SQMotion) SQMotion.openSheet(ov); else ov.classList.remove('hidden'); }
+        function closeMoveDialog() { const ov = document.getElementById('move-dialog'); if (window.SQMotion) SQMotion.closeSheet(ov); else ov.classList.add('hidden'); currentMoveItemId = null; }
         async function confirmMove() {
             const pos = parseInt(document.getElementById('move-position-input').value);
             if (!pos || pos < 1 || !currentMoveItemId) return;
@@ -379,36 +257,89 @@
             const query = document.getElementById('admin-search-input').value.trim();
             if (!query) return;
             const c = document.getElementById('admin-search-results');
-            c.innerHTML = '<div style="color:#666;padding:20px;text-align:center;font-size:16px;">Buscando...</div>';
+            c.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
             try {
                 const res = await fetch(`${API_URL}/api/v1/songs/search?q=${encodeURIComponent(query)}&limit=10`);
-                if (!res.ok) { c.innerHTML = '<div style="color:#ff6b6b;">Error al buscar</div>'; return; }
+                if (!res.ok) { c.innerHTML = '<div class="msg error">Error al buscar</div>'; return; }
                 searchResults = await res.json();
                 if (!searchResults || !searchResults.length) { c.innerHTML = '<div class="empty-msg">Sin resultados</div>'; return; }
-                c.innerHTML = searchResults.map((s, i) => `<div class="song-card"><img src="${s.thumbnail_url||''}" alt="" onerror="this.style.display='none'"><div class="info"><h4>${escapeHtml(s.title)}</h4><p>${escapeHtml(s.channel||'')}</p></div><div class="actions"><button class="btn-add-queue" onclick="adminAddToQueue(${i},this)">Cola</button><button class="btn-add-playlist" onclick="openAddToPlaylistDialog(${i})">Playlist</button></div></div>`).join('');
-            } catch(e) { c.innerHTML = '<div style="color:#ff6b6b;">Error de conexion</div>'; }
+                c.innerHTML = searchResults.map((s, i) => `<div class="song-card"><img src="${s.thumbnail_url||''}" alt="" loading="lazy" onerror="this.style.display='none'"><div class="info"><h4>${escapeHtml(s.title)}</h4><p>${escapeHtml(s.channel||'')}</p></div><div class="actions"><button class="btn-add-queue" onclick="adminAddToQueue(${i},this)">Cola</button><button class="btn-add-playlist" onclick="openAddToPlaylistDialog(${i})">Playlist</button></div></div>`).join('');
+                if (window.SQMotion) { SQMotion.staggerIn(c.querySelectorAll('.song-card')); SQMotion.pressable(c); }
+            } catch(e) { c.innerHTML = '<div class="msg error">Error de conexión</div>'; }
         }
         async function adminAddToQueue(idx, btn) {
             const s = searchResults[idx];
             if (!s) return;
-            btn.disabled = true; btn.textContent = '...';
+            btn.disabled = true; btn.textContent = '…';
             try {
                 const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/add`, {
                     method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
                     body: JSON.stringify({youtube_id:s.youtube_id, device_fingerprint:'admin-venue-'+venueId, requested_by:'Admin', title:s.title, channel:s.channel, thumbnail_url:s.thumbnail_url, duration_seconds:s.duration_seconds})
                 });
-                if (res.ok) { showMessage('Agregada a la cola', 'success'); loadQueue(); }
+                if (res.ok) { showMessage('Agregada a la cola', 'success'); if (navigator.vibrate) navigator.vibrate(10); loadQueue(); }
                 else { const e = await res.json(); showMessage(e.detail||'Error', 'error'); }
-            } catch(e) { showMessage('Error de conexion', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
             btn.disabled = false; btn.textContent = 'Cola';
         }
 
         // Playlists
         function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            if (tab === 'queue') { document.querySelectorAll('.tab-btn')[0].classList.add('active'); document.getElementById('tab-queue').classList.add('active'); }
-            else { document.querySelectorAll('.tab-btn')[1].classList.add('active'); document.getElementById('tab-playlists').classList.add('active'); loadPlaylists(); }
+            const order = ['queue', 'waiting', 'playlists'];
+            const idx = order.indexOf(tab);
+            if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
+            const panel = document.getElementById('tab-' + tab);
+            if (panel) panel.classList.add('active');
+            if (tab === 'waiting') loadWaiting();
+            if (tab === 'playlists') loadPlaylists();
+            if (window.SQMotion && panel) SQMotion.enter(panel);
+        }
+
+        async function loadWaiting() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/waiting`, {headers:{'Authorization':`Bearer ${token}`}});
+                renderWaitingAdmin(await res.json());
+            } catch(e) {}
+        }
+
+        function renderWaitingAdmin(data) {
+            const waiting = data.waiting || [];
+            const badge = document.getElementById('waiting-badge');
+            badge.textContent = waiting.length;
+            badge.classList.toggle('zero', waiting.length === 0);
+            const c = document.getElementById('waiting-list-admin');
+            if (!waiting.length) { c.innerHTML = '<div class="empty-msg">Sin canciones en espera</div>'; return; }
+            c.innerHTML = waiting.map(it => {
+                const s = it.song || {};
+                return `<div class="queue-item-admin"><img src="${s.thumbnail_url||''}" alt="" loading="lazy" onerror="this.style.display='none'"><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')} &middot; <b>${escapeHtml(it.requested_by||'Anónimo')}</b></p></div><div class="actions"><button class="btn-approve-first" onclick="approveWaiting(${it.id},'first')">Prioridad</button><button class="btn-approve-last" onclick="approveWaiting(${it.id},'last')">Última</button><button class="btn-remove" onclick="rejectWaiting(${it.id})">&#10005;</button></div></div>`;
+            }).join('');
+            if (window.SQMotion) { SQMotion.staggerIn(c.querySelectorAll('.queue-item-admin')); SQMotion.pressable(c); }
+        }
+
+        async function approveWaiting(itemId, position) {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/waiting/${itemId}/approve`, {
+                    method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+                    body: JSON.stringify({position})
+                });
+                if (res.ok) {
+                    showMessage(position === 'first' ? 'Aprobada como prioridad' : 'Aprobada al final de la cola', 'success');
+                    if (navigator.vibrate) navigator.vibrate(10);
+                    loadWaiting(); loadQueue();
+                } else { showMessage('Error al aprobar', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
+        }
+
+        async function rejectWaiting(itemId) {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/queue/venue/${venueId}/waiting/${itemId}/reject`, {
+                    method: 'POST', headers: {'Authorization':`Bearer ${token}`}
+                });
+                if (res.ok) { showMessage('Canción rechazada', 'success'); loadWaiting(); }
+                else { showMessage('Error al rechazar', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
         }
         async function loadPlaylists() {
             try {
@@ -417,10 +348,11 @@
                 const c = document.getElementById('playlists-list');
                 if (!playlists || !playlists.length) { c.innerHTML = '<div class="empty-msg">No hay playlists. Crea una para empezar.</div>'; return; }
                 c.innerHTML = playlists.map(pl => `<div class="playlist-card"><div class="info"><h4>${escapeHtml(pl.name)}</h4><p>${pl.item_count} canciones</p></div><div class="actions"><button class="btn-view" onclick="viewPlaylist(${pl.id},'${escapeHtml(pl.name).replace(/'/g,"\\'")}')">Ver</button><button class="btn-playlist" onclick="playPlaylist(${pl.id})">Reproducir</button><button class="btn-delete" onclick="deletePlaylist(${pl.id})">&#10005;</button></div></div>`).join('');
+                if (window.SQMotion) { SQMotion.staggerIn(c.querySelectorAll('.playlist-card')); SQMotion.pressable(c); }
             } catch(e) {}
         }
-        function openNewPlaylistDialog() { document.getElementById('new-playlist-name').value = ''; document.getElementById('new-playlist-dialog').classList.remove('hidden'); }
-        function closeNewPlaylistDialog() { document.getElementById('new-playlist-dialog').classList.add('hidden'); }
+        function openNewPlaylistDialog() { document.getElementById('new-playlist-name').value = ''; const ov = document.getElementById('new-playlist-dialog'); if (window.SQMotion) SQMotion.openSheet(ov); else ov.classList.remove('hidden'); }
+        function closeNewPlaylistDialog() { const ov = document.getElementById('new-playlist-dialog'); if (window.SQMotion) SQMotion.closeSheet(ov); else ov.classList.add('hidden'); }
         async function createPlaylist() {
             const name = document.getElementById('new-playlist-name').value.trim();
             if (!name) return;
@@ -431,10 +363,10 @@
                 });
                 if (res.ok) { showMessage('Playlist creada', 'success'); closeNewPlaylistDialog(); loadPlaylists(); }
                 else { showMessage('Error', 'error'); }
-            } catch(e) { showMessage('Error de conexion', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
         }
         async function deletePlaylist(id) {
-            if (!confirm('Eliminar playlist?')) return;
+            if (!confirm('¿Eliminar playlist?')) return;
             try {
                 await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${id}`, {method:'DELETE', headers:{'Authorization':`Bearer ${token}`}});
                 showMessage('Playlist eliminada', 'success'); loadPlaylists();
@@ -446,10 +378,13 @@
                 const data = await res.json();
                 if (res.ok) { showMessage(`${data.added} canciones agregadas a la cola`, 'success'); loadQueue(); }
                 else { showMessage(data.detail||'Error', 'error'); }
-            } catch(e) { showMessage('Error de conexion', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
         }
+        let viewedPlaylistName = '';
+        function playCurrentPlaylist() { if (currentPlaylistId) playPlaylist(currentPlaylistId); }
         async function viewPlaylist(id, name) {
             currentPlaylistId = id;
+            viewedPlaylistName = name;
             document.getElementById('playlist-detail-name').textContent = name;
             document.getElementById('playlists-list').classList.add('hidden');
             document.querySelector('.section-header').classList.add('hidden');
@@ -458,11 +393,12 @@
                 const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${id}`, {headers:{'Authorization':`Bearer ${token}`}});
                 const data = await res.json();
                 const c = document.getElementById('playlist-detail-items');
-                if (!data.items || !data.items.length) { c.innerHTML = '<div class="empty-msg">Playlist vacia. Agrega canciones desde la busqueda.</div>'; return; }
+                if (!data.items || !data.items.length) { c.innerHTML = '<div class="empty-msg">Playlist vacía. Agrega canciones desde la búsqueda.</div>'; return; }
                 c.innerHTML = data.items.map(it => {
                     const s = it.song || {};
-                    return `<div class="playlist-item"><img src="${s.thumbnail_url||''}" alt=""><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')}</p></div><button class="btn-remove" onclick="removeFromPlaylist(${it.id})">&#10005;</button></div>`;
+                    return `<div class="playlist-item"><img src="${s.thumbnail_url||''}" alt="" loading="lazy"><div class="info"><h4>${escapeHtml(s.title||'Desconocido')}</h4><p>${escapeHtml(s.channel||'')}</p></div><div class="actions"><button class="btn-remove" onclick="removeFromPlaylist(${it.id})">&#10005;</button></div></div>`;
                 }).join('');
+                if (window.SQMotion) SQMotion.staggerIn(c.querySelectorAll('.playlist-item'));
             } catch(e) {}
         }
         function closePlaylistDetail() {
@@ -482,9 +418,10 @@
         function openAddToPlaylistDialog(idx) {
             pendingSongData = searchResults[idx];
             loadPlaylistsForDialog();
-            document.getElementById('add-to-playlist-dialog').classList.remove('hidden');
+            const ov = document.getElementById('add-to-playlist-dialog');
+            if (window.SQMotion) SQMotion.openSheet(ov); else ov.classList.remove('hidden');
         }
-        function closeAddToPlaylistDialog() { document.getElementById('add-to-playlist-dialog').classList.add('hidden'); pendingSongData = null; }
+        function closeAddToPlaylistDialog() { const ov = document.getElementById('add-to-playlist-dialog'); if (window.SQMotion) SQMotion.closeSheet(ov); else ov.classList.add('hidden'); pendingSongData = null; }
         async function loadPlaylistsForDialog() {
             try {
                 const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}`, {headers:{'Authorization':`Bearer ${token}`}});
@@ -510,18 +447,18 @@
                     }
                 } catch(e) {}
             }
-            if (!songId) { showMessage('Error: no se pudo guardar la cancion', 'error'); closeAddToPlaylistDialog(); return; }
+            if (!songId) { showMessage('Error: no se pudo guardar la canción', 'error'); closeAddToPlaylistDialog(); return; }
             try {
                 const res = await fetch(`${API_URL}/api/v1/playlists/venue/${venueId}/${playlistId}/add`, {
                     method: 'POST', headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
                     body: JSON.stringify({song_id: songId})
                 });
-                if (res.ok) { showMessage('Cancion agregada a la playlist', 'success'); closeAddToPlaylistDialog(); }
+                if (res.ok) { showMessage('Canción agregada a la playlist', 'success'); closeAddToPlaylistDialog(); }
                 else { showMessage('Error al agregar', 'error'); }
-            } catch(e) { showMessage('Error de conexion', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
         }
 
-        function showMessage(text, type) { const el = document.getElementById('message'); el.innerHTML = `<div class="${type}">${text}</div>`; setTimeout(()=>el.innerHTML='',4000); }
+        function showMessage(text, type) { const el = document.getElementById('message'); el.innerHTML = `<div class="msg ${type}">${text}</div>`; if (window.SQMotion) SQMotion.toast(el.firstChild); clearTimeout(el._t); el._t = setTimeout(()=>el.innerHTML='',4000); }
         function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         init();
     </script>

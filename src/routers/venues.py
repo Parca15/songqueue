@@ -11,6 +11,8 @@ from sqlalchemy import select
 from src.database import get_db
 from src.models.venue import Venue
 from src.schemas.venue import VenueCreate, VenueResponse, VenueConfigUpdate
+from src.schemas.client import ClientRegister, ClientResponse
+from src.services.client_service import register_client_name, NameTakenError
 from src.utils.security import get_password_hash
 from src.utils.qr_generator import qr_to_base64
 from src.utils.auth import get_current_admin
@@ -49,6 +51,7 @@ async def create_venue(
         max_songs_per_device=venue_data.max_songs_per_device,
         max_queue_size=venue_data.max_queue_size,
         allow_duplicates=venue_data.allow_duplicates,
+        require_approval=venue_data.require_approval,
         admin_username=venue_data.admin_username,
         admin_password_hash=get_password_hash(venue_data.admin_password),
     )
@@ -114,6 +117,31 @@ async def update_venue(
     await db.commit()
     await db.refresh(venue)
     return venue
+
+
+@router.post("/{venue_id}/register-name", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
+async def register_client(
+    venue_id: int,
+    body: ClientRegister,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Registra el nombre de un cliente en un local (público, desde el QR).
+
+    El nombre es único por local (insensible a mayúsculas). Si ya está en uso
+    por otro dispositivo → 409. Idempotente para el mismo dispositivo.
+    """
+    result = await db.execute(select(Venue).where(Venue.id == venue_id))
+    venue = result.scalar_one_or_none()
+    if not venue or not venue.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local no encontrado o inactivo")
+
+    try:
+        client = await register_client_name(db, venue_id, body.display_name, body.device_fingerprint)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except NameTakenError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    return client
 
 
 @router.get("/{venue_id}/qr")

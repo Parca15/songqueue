@@ -2,50 +2,54 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SongQueue - Reproductor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <title>SongQueue — Reproductor</title>
+    <link rel="stylesheet" href="design-system.css">
+    <script src="https://cdn.jsdelivr.net/npm/motion@11/dist/motion.js" defer></script>
+    <script src="motion.js" defer></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #000; color: #fff; overflow: hidden; }
-        #player-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
+        body { background: #000; color: #fff; overflow: hidden; font-optical-sizing: auto; }
+        #player-container { position: fixed; inset: 0; }
         #youtube-player { width: 100%; height: 100%; }
-        .overlay { position: fixed; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 100; }
-        .now-playing-info { background: rgba(0,0,0,0.7); padding: 15px 25px; border-radius: 12px; backdrop-filter: blur(10px); max-width: 500px; }
-        .now-playing-info h2 { font-size: 1.2rem; margin-bottom: 5px; }
-        .now-playing-info p { font-size: 0.9rem; color: #aaa; }
-        .queue-preview { background: rgba(0,0,0,0.7); padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); min-width: 250px; }
-        .queue-preview h3 { font-size: 0.9rem; margin-bottom: 10px; color: #e91e63; }
-        .queue-preview-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.8rem; }
-        .queue-preview-item img { width: 40px; height: 30px; border-radius: 4px; object-fit: cover; }
-        .queue-preview-item span { color: #ccc; }
-        .venue-badge { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; color: #888; }
+        .overlay { position: fixed; top: max(1.25rem, env(safe-area-inset-top)); left: 1.25rem; right: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; pointer-events: none; z-index: 100; }
+        .now-playing-info { padding: 0.9rem 1.5rem; max-width: 31rem; will-change: transform, opacity; }
+        .now-playing-info h2 { font-size: 1.15rem; margin-bottom: 0.3rem; font-weight: 700; letter-spacing: -0.01em; }
+        .now-playing-info p { font-size: 0.9rem; }
+        .queue-preview { padding: 0.9rem; min-width: 15.5rem; pointer-events: auto; }
+        .queue-preview h3 { font-size: 0.8rem; margin-bottom: 0.625rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+        .queue-preview-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem; }
+        .queue-preview-item img { width: 2.5rem; height: 1.875rem; border-radius: 4px; object-fit: cover; background: rgba(255,255,255,0.1); }
+        .queue-preview-item span { color: rgba(255,255,255,0.85); font-weight: 500; letter-spacing: 0.01em; }
+        .venue-badge { position: fixed; bottom: max(1.25rem, env(safe-area-inset-bottom)); right: 1.25rem; padding: 0.625rem 1.25rem; font-size: 0.9rem; color: rgba(255,255,255,0.75); font-weight: 500; letter-spacing: 0.02em; }
         .connecting { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; z-index: 200; }
-        .connecting h1 { font-size: 2rem; margin-bottom: 10px; }
+        .connecting h1 { font-size: 2rem; margin-bottom: 0.625rem; letter-spacing: -0.022em; }
         .connecting p { color: #888; }
-        .skip-wait { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.85); padding: 22px 45px; border-radius: 14px; font-size: 1.3rem; z-index: 300; text-align: center; }
-        .skip-wait small { display: block; color: #e91e63; margin-top: 10px; font-size: 1.1rem; }
-        .hidden { display: none !important; }
+        .skip-wait { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); padding: 1.375rem 2.8rem; font-size: 1.3rem; z-index: 300; text-align: center; }
+        .skip-wait small { display: block; color: var(--accent); margin-top: 0.625rem; font-size: 1.1rem; }
 
-        /* Responsive: texto de now-playing más legible en móviles */
-        @media (max-width: 700px) {
+        @media (max-width: 43.75rem) {
             .now-playing-info h2 { font-size: 1rem; }
             .now-playing-info p { font-size: 0.8rem; }
-            .queue-preview { min-width: 180px; }
-            .skip-wait { font-size: 1.1rem; padding: 16px 30px; }
+            .queue-preview { min-width: 11rem; }
+            .skip-wait { font-size: 1.1rem; padding: 1rem 1.875rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .now-playing-info { transform: none !important; }
         }
     </style>
 </head>
 <body>
-    <div id="connecting" class="connecting"><h1>SongQueue</h1><p>Conectando al local...</p></div>
+    <div id="connecting" class="connecting"><h1>SongQueue</h1><p>Conectando al local…</p></div>
     <div id="player-container" class="hidden">
         <div id="youtube-player"></div>
     </div>
     <div class="overlay hidden" id="overlay">
-        <div class="now-playing-info"><h2 id="np-title">Esperando cancion...</h2><p id="np-channel">-</p></div>
-        <div class="queue-preview"><h3>Siguientes</h3><div id="queue-preview-list"></div></div>
+        <div class="now-playing-info player-glass" id="np-card"><h2 id="np-title">Esperando canción…</h2><p id="np-channel">—</p></div>
+        <div class="queue-preview player-glass"><h3>Siguientes</h3><div id="queue-preview-list"></div></div>
     </div>
-    <div class="venue-badge hidden" id="venue-badge">Local desconocido</div>
-    <div id="skip-wait" class="skip-wait hidden">Preparando siguiente canción...<small id="skip-wait-count"></small></div>
+    <div class="venue-badge player-glass hidden" id="venue-badge">Local desconocido</div>
+    <div id="skip-wait" class="skip-wait player-glass hidden">Preparando siguiente canción…<small id="skip-wait-count"></small></div>
     <script>
         var API_URL = window.location.origin;
         var venueId = new URLSearchParams(window.location.search).get('venue');
@@ -64,18 +68,29 @@
             document.head.appendChild(tag);
         }
 
+        function disableCaptions() {
+            // Fuerza subtítulos apagados: cc_load_policy solo evita el default,
+            // hay que descargar el módulo y vaciar la pista en cada reproducción.
+            if (!player) return;
+            try { player.unloadModule('captions'); } catch (e) {}
+            try { player.setOption('captions', 'track', {}); } catch (e) {}
+        }
+
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('youtube-player', {
                 height: '100%', width: '100%',
                 playerVars: { autoplay: 1, controls: 0, rel: 0, modestbranding: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: '', hl: 'es', enablejsapi: 1 },
-                events: { onReady: function(){}, onStateChange: onPlayerStateChange, onError: onPlayerError }
+                events: { onReady: function() { disableCaptions(); }, onStateChange: onPlayerStateChange, onError: onPlayerError }
             });
         }
 
         function showSkipMessage(msg) {
             var el = document.getElementById('skip-wait');
             if (el && el.firstChild) el.firstChild.nodeValue = msg;
-            if (el) el.classList.remove('hidden');
+            if (el) {
+                el.classList.remove('hidden');
+                if (window.SQMotion) SQMotion.enter(el, { y: 12 });
+            }
             setTimeout(function() { if (el) el.classList.add('hidden'); }, 3000);
         }
 
@@ -100,6 +115,7 @@
             if (e.data === YT.PlayerState.PLAYING) {
                 hasPlayed = true;
                 clearTimeout(stuckTimer);
+                disableCaptions();
             } else if (e.data === YT.PlayerState.ENDED) {
                 clearTimeout(stuckTimer);
                 autoSkip(false);
@@ -199,19 +215,27 @@
                 }
             }
             document.getElementById('np-title').textContent = s.title || 'Desconocido';
-            document.getElementById('np-channel').textContent = s.channel || '-';
+            document.getElementById('np-channel').textContent = s.channel || '—';
+            // Transición materializada del now-playing (§12): blur+scale, mismo eje (§7)
+            if (window.SQMotion) SQMotion.enter(document.getElementById('np-card'), { y: 10 });
         }
 
         function updatePreview(data) {
             var c = document.getElementById('queue-preview-list');
             if (!data.upcoming || !data.upcoming.length) {
-                c.innerHTML = '<div style="color:#666;font-size:0.8rem;">Sin canciones pendientes</div>';
+                c.innerHTML = '<div style="color:rgba(255,255,255,0.5);font-size:0.8rem;">Sin canciones pendientes</div>';
                 return;
             }
             c.innerHTML = data.upcoming.slice(0,5).map(function(it) {
                 var s = it.song || {};
-                return '<div class="queue-preview-item"><img src="' + (s.thumbnail_url||'') + '" alt=""><span>' + (s.title||'Desconocido').substring(0,30) + '...</span></div>';
+                return '<div class="queue-preview-item"><img src="' + (s.thumbnail_url||'') + '" alt="" loading="lazy"><span>' + escapeHtml((s.title||'Desconocido')).substring(0,30) + '...</span></div>';
             }).join('');
+        }
+
+        function escapeHtml(s) {
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
         }
 
         function handleCmd(cmd) {
