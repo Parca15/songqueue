@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # ── YouTube ──
     youtube_api_key: str | None = None
 
+    # ── Super admin (bootstrap: se crea solo si no existe ninguno) ──
+    super_admin_username: str | None = None
+    super_admin_password: str | None = None
+
     @property
     def async_database_url(self) -> str:
         """Retorna la URL de la base de datos para uso async."""

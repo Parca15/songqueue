@@ -18,7 +18,7 @@ from src.services.queue_service import (
 )
 from src.services.device_service import can_device_add_song, get_or_create_device
 from src.services.youtube_service import get_video_details
-from src.utils.auth import get_current_admin
+from src.utils.auth import get_current_principal, Principal, require_venue_access
 from src.routers.websocket import manager as ws_manager
 
 router = APIRouter()
@@ -235,11 +235,10 @@ async def add_to_queue(
 async def get_waiting_state(
     venue_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
     """Lista de espera completa (solo admin del local)."""
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     waiting = await get_waiting_list(db, venue_id)
     return {
@@ -276,11 +275,10 @@ async def approve_waiting(
     item_id: int,
     approval: WaitingApprove,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
     """Aprueba un item en espera y lo pasa a la cola (primero o último)."""
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     item = await approve_waiting_item(db, venue_id, item_id, approval.position)
     if not item:
@@ -296,11 +294,10 @@ async def reject_waiting(
     venue_id: int,
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
     """Rechaza un item en espera (lo descarta)."""
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     result = await db.execute(
         select(QueueItem).where(
@@ -324,10 +321,9 @@ async def reorder_queue_endpoint(
     venue_id: int,
     reorder: QueueReorder,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> list[dict]:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     items = await reorder_queue(db, venue_id, reorder)
     await _broadcast_queue_update(db, venue_id)
@@ -339,10 +335,9 @@ async def move_queue_item(
     venue_id: int,
     move_data: QueueMoveToPosition,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> list[dict]:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     items = await move_to_position(db, venue_id, move_data.item_id, move_data.new_position)
     await _broadcast_queue_update(db, venue_id)
@@ -354,10 +349,9 @@ async def remove_queue_item(
     venue_id: int,
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> None:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     removed = await remove_from_queue(db, venue_id, item_id)
     if not removed:
@@ -371,10 +365,9 @@ async def play_item(
     venue_id: int,
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict | None:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     item = await mark_as_playing(db, venue_id, item_id)
     if item:
@@ -399,10 +392,9 @@ async def play_item(
 async def skip_item(
     venue_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict | None:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     next_item = await skip_current(db, venue_id)
     if next_item:

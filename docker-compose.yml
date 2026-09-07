@@ -45,6 +45,8 @@ services:
       - DB_PASSWORD=songqueue_pass
       - DATABASE_URL=mysql+aiomysql://songqueue:songqueue_pass@db:3306/songqueue
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production-use-openssl-rand-hex-32}
+      - SUPER_ADMIN_USERNAME=${SUPER_ADMIN_USERNAME:-superadmin}
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-AIzaSyBoY8w7ckROl4uPmoptD2x5DDJBEf0inRU}
       - DEBUG=false
       - HOST=0.0.0.0

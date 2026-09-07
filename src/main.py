@@ -9,8 +9,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.config import get_settings
-from src.database import init_db
-from src.routers import venues, songs, queue, websocket, auth, playlist
+from src.database import init_db, AsyncSessionLocal
+from src.routers import venues, songs, queue, websocket, auth, playlist, superadmin
+from src.services.user_service import ensure_superadmin
 
 settings = get_settings()
 
@@ -26,6 +27,21 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"⚠️  init_db() omitido: {e}")
             print("   Ejecuta: docker-compose up -d db")
+    # Bootstrap del super admin (solo si está configurado y no existe ninguno)
+    if settings.super_admin_username and settings.super_admin_password:
+        try:
+            async with AsyncSessionLocal() as session:
+                _, created = await ensure_superadmin(
+                    session,
+                    settings.super_admin_username,
+                    settings.super_admin_password,
+                )
+                if created:
+                    print(f"✅ Super admin '{settings.super_admin_username}' creado")
+        except Exception as e:
+            print(f"⚠️  ensure_superadmin() omitido: {e}")
+    else:
+        print("ℹ️  Sin SUPER_ADMIN_USERNAME/PASSWORD: login de super admin no disponible")
     yield
     # Shutdown
 
@@ -63,6 +79,7 @@ async def value_error_handler(request: Request, exc: ValueError):
 
 # ── Routers ──
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(superadmin.router, prefix="/api/v1/super", tags=["superadmin"])
 app.include_router(venues.router, prefix="/api/v1/venues", tags=["venues"])
 app.include_router(songs.router, prefix="/api/v1/songs", tags=["songs"])
 app.include_router(queue.router, prefix="/api/v1/queue", tags=["queue"])

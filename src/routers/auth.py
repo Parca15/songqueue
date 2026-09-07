@@ -6,10 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.database import get_db
+from src.models.user import User
 from src.models.venue import Venue
 from src.schemas.auth import AdminLogin, TokenResponse
 from src.utils.security import verify_password, create_access_token
-from src.utils.auth import get_current_admin
+from src.utils.auth import get_current_principal, Principal, SuperAdminPrincipal, ROLE_VENUE, ROLE_SUPERADMIN
 
 router = APIRouter()
 
@@ -20,9 +21,25 @@ async def admin_login(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     """
-    Login de administrador de un local.
+    Login de super admin o de administrador de un local.
     Retorna un JWT token para usar en endpoints protegidos.
     """
+    # 1. Intentar como super admin (usuarios globales)
+    result = await db.execute(select(User).where(User.username == credentials.username))
+    user = result.scalar_one_or_none()
+    if user and user.is_active and user.role == ROLE_SUPERADMIN:
+        if verify_password(credentials.password, user.password_hash):
+            access_token = create_access_token(
+                data={"sub": str(user.id), "role": ROLE_SUPERADMIN}
+            )
+            return TokenResponse(
+                access_token=access_token,
+                role=ROLE_SUPERADMIN,
+                venue_id=None,
+                venue_name=None,
+            )
+
+    # 2. Intentar como admin de local
     result = await db.execute(
         select(Venue).where(Venue.admin_username == credentials.username)
     )
@@ -40,10 +57,11 @@ async def admin_login(
             detail="Usuario o contrasena incorrectos",
         )
 
-    access_token = create_access_token(data={"sub": str(venue.id)})
+    access_token = create_access_token(data={"sub": str(venue.id), "role": ROLE_VENUE})
 
     return TokenResponse(
         access_token=access_token,
+        role=ROLE_VENUE,
         venue_id=venue.id,
         venue_name=venue.name,
     )
@@ -51,14 +69,20 @@ async def admin_login(
 
 @router.post("/logout")
 async def admin_logout(
-    current_admin: Venue = Depends(get_current_admin),
+    principal: Principal = Depends(get_current_principal),
 ):
     """
     Logout de administrador.
     El cliente debe eliminar el token del localStorage.
     """
+    if isinstance(principal, SuperAdminPrincipal):
+        return {
+            "message": "Logout exitoso",
+            "venue_id": None,
+            "venue_name": principal.username,
+        }
     return {
         "message": "Logout exitoso",
-        "venue_id": current_admin.id,
-        "venue_name": current_admin.name,
+        "venue_id": principal.id,
+        "venue_name": principal.name,
     }

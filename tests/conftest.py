@@ -1,7 +1,11 @@
 """
 Configuración de pytest para tests asíncronos.
-Usa SQLite en memoria para tests rápidos.
+Usa SQLite en archivo temporal (la memoria + NullPool pierde las tablas
+entre conexiones).
 """
+import os
+import tempfile
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -12,8 +16,10 @@ from src.main import app
 from src.database import Base, get_db
 from src.config import Settings
 
-# Base de datos en memoria para tests
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Base de datos temporal en archivo para tests
+_fd, TEST_DB_PATH = tempfile.mkstemp(prefix="songqueue_test_", suffix=".db")
+os.close(_fd)
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 
 engine = create_async_engine(
     TEST_DATABASE_URL,
@@ -44,6 +50,23 @@ async def setup_database():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+
+
+@pytest_asyncio.fixture
+async def super_headers(client):
+    """Headers con token de super admin (crea el super si no existe)."""
+    from src.services.user_service import ensure_superadmin
+
+    async with TestingSessionLocal() as session:
+        await ensure_superadmin(session, "test_super", "superpass123")
+    resp = await client.post("/api/v1/auth/login", json={
+        "username": "test_super",
+        "password": "superpass123",
+    })
+    assert resp.status_code == 200, resp.text
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
 
 @pytest_asyncio.fixture

@@ -28,6 +28,7 @@
         <header class="app-header">
             <h1 class="display" style="font-size:1.6rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">SongQueue</h1>
             <span id="venue-name" class="venue-tag">Panel de administración</span>
+            <button id="accounts-btn" class="btn btn-cancel hidden" style="padding:0.625rem 1.1rem;font-size:0.9rem;" onclick="backToAccounts()">← Cuentas</button>
             <button id="logout-btn" class="logout-btn hidden" onclick="logout()">Cerrar sesión</button>
         </header>
         <div id="message" aria-live="polite"></div>
@@ -104,6 +105,15 @@
             </div>
         </div>
     </div>
+    <div id="super-panel" class="hidden">
+        <div class="card panel-card full-width">
+            <div class="section-header">
+                <h3>Cuentas (locales)</h3>
+                <button class="btn btn-ok btn-new" onclick="openAccountDialog()">+ Nueva cuenta</button>
+            </div>
+            <div id="accounts-list" class="scroll-area"></div>
+        </div>
+    </div>
     <div id="move-dialog" class="dialog-overlay hidden">
         <div class="dialog-content" id="move-sheet">
             <div class="sheet-handle"></div>
@@ -136,20 +146,41 @@
             </div>
         </div>
     </div>
+    <div id="account-dialog" class="dialog-overlay hidden">
+        <div class="dialog-content" id="account-sheet">
+            <div class="sheet-handle"></div>
+            <h3 id="account-dialog-title">Nueva cuenta</h3>
+            <input type="text" id="acc-name" placeholder="Nombre del local" maxlength="255">
+            <input type="text" id="acc-username" placeholder="Usuario admin" maxlength="100" autocomplete="off">
+            <input type="password" id="acc-password" placeholder="Contraseña (vacío = no cambiar)" autocomplete="new-password">
+            <div class="config-row"><label>Max canciones/dispositivo</label><input type="number" id="acc-max-songs" min="1" max="20" value="3"></div>
+            <div class="config-row"><label>Max tamaño cola</label><input type="number" id="acc-max-queue" min="5" max="200" value="50"></div>
+            <div class="config-row"><label>Permitir duplicados</label><input type="checkbox" id="acc-duplicates"></div>
+            <div class="config-row"><label>Todo a lista de espera</label><input type="checkbox" id="acc-require-approval" checked></div>
+            <div class="config-row"><label>Local activo</label><input type="checkbox" id="acc-active" checked></div>
+            <div class="dialog-actions">
+                <button class="btn-cancel" onclick="closeAccountDialog()">Cancelar</button>
+                <button class="btn-confirm" onclick="saveAccount()">Guardar</button>
+            </div>
+        </div>
+    </div>
     <script>
         const API_URL = window.location.origin;
         let token = localStorage.getItem('sq_admin_token');
         let venueId = localStorage.getItem('sq_admin_venue');
+        let isSuper = localStorage.getItem('sq_admin_role') === 'superadmin';
         let ws = null;
         let currentPlaylistId = null;
         let pendingSongData = null;
 
         async function init() {
-            if (token && venueId) { showPanel(); }
+            if (token && isSuper) { showSuperPanel(); }
+            else if (token && venueId) { showPanel(); }
             if (window.SQMotion) {
                 SQMotion.pressable(document);
-                ['move-dialog', 'new-playlist-dialog', 'add-to-playlist-dialog'].forEach(id => {
+                ['move-dialog', 'new-playlist-dialog', 'add-to-playlist-dialog', 'account-dialog'].forEach(id => {
                     const ov = document.getElementById(id);
+                    if (!ov) return;
                     const sheet = ov.querySelector('.dialog-content');
                     SQMotion.makeDraggable(sheet, { onDismiss: () => ov.classList.add('hidden') });
                     ov.addEventListener('click', (e) => { if (e.target === ov) SQMotion.closeSheet(ov, sheet); });
@@ -158,15 +189,39 @@
         }
         function showPanel() {
             document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('super-panel').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
             document.getElementById('logout-btn').classList.remove('hidden');
+            document.getElementById('accounts-btn').classList.toggle('hidden', !isSuper);
             loadVenueData(); loadQueue(); loadWaiting(); connectWebSocket(); loadPlaylists();
             if (window.SQMotion) SQMotion.staggerIn(document.querySelectorAll('#admin-panel .card'));
+        }
+        function showSuperPanel() {
+            closeWs();
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('super-panel').classList.remove('hidden');
+            document.getElementById('logout-btn').classList.remove('hidden');
+            document.getElementById('accounts-btn').classList.add('hidden');
+            document.getElementById('venue-name').textContent = 'Super admin';
+            loadAccounts();
+            if (window.SQMotion) SQMotion.staggerIn(document.querySelectorAll('#super-panel .card'));
+        }
+        function closeWs() {
+            if (ws) { try { ws.onclose = null; ws.close(); } catch (e) {} ws = null; }
+        }
+        function backToAccounts() {
+            if (!isSuper) return;
+            venueId = null;
+            localStorage.removeItem('sq_admin_venue');
+            showSuperPanel();
         }
         function hidePanel() {
             document.getElementById('login-section').classList.remove('hidden');
             document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('super-panel').classList.add('hidden');
             document.getElementById('logout-btn').classList.add('hidden');
+            document.getElementById('accounts-btn').classList.add('hidden');
         }
         async function login() {
             try {
@@ -177,20 +232,32 @@
                 if (res.ok) {
                     const data = await res.json();
                     token = data.access_token;
-                    venueId = data.venue_id;
+                    isSuper = data.role === 'superadmin';
                     localStorage.setItem('sq_admin_token', token);
-                    localStorage.setItem('sq_admin_venue', venueId);
-                    showPanel();
+                    localStorage.setItem('sq_admin_role', data.role || 'venue');
+                    if (isSuper) {
+                        venueId = null;
+                        localStorage.removeItem('sq_admin_venue');
+                        showSuperPanel();
+                    } else {
+                        venueId = data.venue_id;
+                        localStorage.setItem('sq_admin_venue', venueId);
+                        showPanel();
+                    }
                 }
                 else { showMessage('Usuario o contraseña incorrectos', 'error'); }
             } catch(e) { showMessage('Error de conexión', 'error'); }
         }
         async function logout() {
             try { await fetch(`${API_URL}/api/v1/auth/logout`, { method: 'POST', headers: {'Authorization': `Bearer ${token}`} }); } catch(e) {}
-            token = null; venueId = null; localStorage.removeItem('sq_admin_token'); localStorage.removeItem('sq_admin_venue'); hidePanel(); showMessage('Sesión cerrada', 'success');
-            if (ws) { ws.close(); ws = null; }
+            token = null; venueId = null; isSuper = false;
+            localStorage.removeItem('sq_admin_token'); localStorage.removeItem('sq_admin_venue'); localStorage.removeItem('sq_admin_role');
+            hidePanel(); showMessage('Sesión cerrada', 'success');
+            closeWs();
         }
         function connectWebSocket() {
+            if (!venueId) return;
+            closeWs();
             const wsUrl = API_URL.replace('http','ws') + `/ws/venue/${venueId}`;
             ws = new WebSocket(wsUrl);
             ws.onopen = () => ws.send(JSON.stringify({action:'register',role:'admin'}));
@@ -280,6 +347,137 @@
                 else { const e = await res.json(); showMessage(e.detail||'Error', 'error'); }
             } catch(e) { showMessage('Error de conexión', 'error'); }
             btn.disabled = false; btn.textContent = 'Cola';
+        }
+
+        // ── Super admin: cuentas ──
+        async function loadAccounts() {
+            try {
+                const res = await fetch(`${API_URL}/api/v1/super/venues`, {headers:{'Authorization':`Bearer ${token}`}});
+                if (!res.ok) { showMessage('Error al cargar cuentas', 'error'); return; }
+                renderAccounts(await res.json());
+            } catch(e) { showMessage('Error de conexión', 'error'); }
+        }
+
+        function renderAccounts(venues) {
+            const c = document.getElementById('accounts-list');
+            if (!venues || !venues.length) {
+                c.innerHTML = '<div class="empty-msg">No hay cuentas. Crea la primera con "+ Nueva cuenta".</div>';
+                return;
+            }
+            c.innerHTML = venues.map(v => `
+                <div class="playlist-card">
+                    <div class="info">
+                        <h4>${escapeHtml(v.name)} ${v.is_active ? '' : '<span class="demo-badge">inactivo</span>'}</h4>
+                        <p>Cola: ${v.pending_count || 0} &middot; Espera: ${v.waiting_count || 0} &middot; Clientes: ${v.clients_count || 0}</p>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-view" onclick="manageVenue(${v.id})">Gestionar</button>
+                        <button class="btn-playlist" onclick="openAccountDialog(${v.id})">Editar</button>
+                        <button class="btn-delete" onclick="deleteAccount(${v.id},'${escapeHtml(v.name).replace(/'/g,"\\'")}')">&#10005;</button>
+                    </div>
+                </div>
+            `).join('');
+            if (window.SQMotion) { SQMotion.staggerIn(c.querySelectorAll('.playlist-card')); SQMotion.pressable(c); }
+        }
+
+        function manageVenue(id) {
+            venueId = id;
+            localStorage.setItem('sq_admin_venue', id);
+            currentMoveItemId = null;
+            showPanel();
+        }
+
+        let editingAccountId = null;
+        function openAccountDialog(id) {
+            editingAccountId = id || null;
+            document.getElementById('account-dialog-title').textContent = id ? 'Editar cuenta' : 'Nueva cuenta';
+            const ov = document.getElementById('account-dialog');
+            if (id) {
+                fetch(`${API_URL}/api/v1/super/venues`, {headers:{'Authorization':`Bearer ${token}`}})
+                    .then(r => r.json())
+                    .then(list => {
+                        const v = list.find(x => x.id === id);
+                        if (!v) return;
+                        document.getElementById('acc-name').value = v.name;
+                        document.getElementById('acc-username').value = '';
+                        document.getElementById('acc-username').placeholder = 'Usuario admin (vacío = no cambiar)';
+                        document.getElementById('acc-password').value = '';
+                        document.getElementById('acc-max-songs').value = v.max_songs_per_device;
+                        document.getElementById('acc-max-queue').value = v.max_queue_size;
+                        document.getElementById('acc-duplicates').checked = v.allow_duplicates;
+                        document.getElementById('acc-require-approval').checked = v.require_approval !== false;
+                        document.getElementById('acc-active').checked = v.is_active;
+                    });
+            } else {
+                document.getElementById('acc-name').value = '';
+                document.getElementById('acc-username').value = '';
+                document.getElementById('acc-username').placeholder = 'Usuario admin';
+                document.getElementById('acc-password').value = '';
+                document.getElementById('acc-max-songs').value = 3;
+                document.getElementById('acc-max-queue').value = 50;
+                document.getElementById('acc-duplicates').checked = false;
+                document.getElementById('acc-require-approval').checked = true;
+                document.getElementById('acc-active').checked = true;
+            }
+            if (window.SQMotion) SQMotion.openSheet(ov); else ov.classList.remove('hidden');
+        }
+        function closeAccountDialog() {
+            const ov = document.getElementById('account-dialog');
+            if (window.SQMotion) SQMotion.closeSheet(ov); else ov.classList.add('hidden');
+            editingAccountId = null;
+        }
+        async function saveAccount() {
+            const body = {
+                max_songs_per_device: parseInt(document.getElementById('acc-max-songs').value),
+                max_queue_size: parseInt(document.getElementById('acc-max-queue').value),
+                allow_duplicates: document.getElementById('acc-duplicates').checked,
+                require_approval: document.getElementById('acc-require-approval').checked,
+                is_active: document.getElementById('acc-active').checked,
+            };
+            const username = document.getElementById('acc-username').value.trim();
+            const password = document.getElementById('acc-password').value;
+            const name = document.getElementById('acc-name').value.trim();
+            if (editingAccountId) {
+                if (name) body.name = name;
+                if (username) body.admin_username = username;
+                if (password) body.admin_password = password;
+            } else {
+                if (!name || !username || !password) {
+                    showMessage('Nombre, usuario y contraseña son obligatorios', 'error');
+                    return;
+                }
+                body.name = name;
+                body.admin_username = username;
+                body.admin_password = password;
+            }
+            try {
+                const url = editingAccountId
+                    ? `${API_URL}/api/v1/super/venues/${editingAccountId}`
+                    : `${API_URL}/api/v1/super/venues`;
+                const res = await fetch(url, {
+                    method: editingAccountId ? 'PATCH' : 'POST',
+                    headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+                    body: JSON.stringify(body),
+                });
+                if (res.ok) {
+                    showMessage(editingAccountId ? 'Cuenta actualizada' : 'Cuenta creada', 'success');
+                    closeAccountDialog();
+                    loadAccounts();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showMessage(err.detail || 'Error al guardar', 'error');
+                }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
+        }
+        async function deleteAccount(id, name) {
+            if (!confirm(`¿Borrar la cuenta "${name}" y todo lo asociado (cola, playlists, clientes)?`)) return;
+            try {
+                const res = await fetch(`${API_URL}/api/v1/super/venues/${id}`, {
+                    method: 'DELETE', headers: {'Authorization':`Bearer ${token}`}
+                });
+                if (res.ok) { showMessage('Cuenta borrada', 'success'); loadAccounts(); }
+                else { showMessage('Error al borrar', 'error'); }
+            } catch(e) { showMessage('Error de conexión', 'error'); }
         }
 
         // Playlists

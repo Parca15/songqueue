@@ -46,3 +46,16 @@ class VenueResponse(VenueBase):
     qr_token: str
     created_at: datetime
     updated_at: datetime
+
+
+class VenueWithStats(VenueResponse):
+    """Venue más contadores para el panel del super admin."""
+    pending_count: int = 0
+    waiting_count: int = 0
+    clients_count: int = 0
+
+
+class SuperVenueUpdate(VenueConfigUpdate):
+    """Actualización total desde el super admin: config + credenciales."""
+    admin_username: str | None = Field(None, min_length=3, max_length=100)
+    admin_password: str | None = Field(None, min_length=6, max_length=71)

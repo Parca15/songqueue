@@ -14,11 +14,13 @@ class TokenResponse(BaseModel):
     """Respuesta con token JWT."""
     access_token: str
     token_type: str = "bearer"
-    venue_id: int
-    venue_name: str
+    role: str = "venue"
+    venue_id: int | None = None
+    venue_name: str | None = None
 
 
 class TokenPayload(BaseModel):
     """Payload decodificado del token."""
     sub: str | None = None
+    role: str | None = None
     exp: int | None = None

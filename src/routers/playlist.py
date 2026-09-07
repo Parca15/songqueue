@@ -19,7 +19,7 @@ from src.services.playlist_service import (
 from src.services.queue_service import add_song_to_queue, get_queue_by_venue, get_now_playing
 from src.services.device_service import get_or_create_device
 from src.schemas.queue import QueueItemCreate
-from src.utils.auth import get_current_admin
+from src.utils.auth import get_current_principal, Principal, require_venue_access
 from src.routers.websocket import manager as ws_manager
 from src.routers.queue import _queue_item_to_dict, _broadcast_queue_update
 
@@ -30,10 +30,9 @@ router = APIRouter()
 async def list_playlists(
     venue_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> list[dict]:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     playlists = await get_playlists_by_venue(db, venue_id)
     result = []
@@ -58,10 +57,9 @@ async def create_playlist_endpoint(
     venue_id: int,
     data: PlaylistCreate,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     playlist = await create_playlist(db, venue_id, data.name)
     return {
@@ -79,10 +77,9 @@ async def delete_playlist_endpoint(
     venue_id: int,
     playlist_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> None:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     deleted = await delete_playlist(db, playlist_id, venue_id)
     if not deleted:
@@ -94,10 +91,9 @@ async def get_playlist_detail(
     venue_id: int,
     playlist_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     playlist = await get_playlist_with_items(db, playlist_id)
     if not playlist or playlist.venue_id != venue_id:
@@ -137,10 +133,9 @@ async def add_to_playlist_endpoint(
     playlist_id: int,
     data: PlaylistItemAdd,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     # Verificar que la playlist existe y pertenece al local
     playlist = await get_playlist_with_items(db, playlist_id)
@@ -180,10 +175,9 @@ async def remove_from_playlist_endpoint(
     playlist_id: int,
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> None:
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     removed = await remove_song_from_playlist(db, playlist_id, item_id)
     if not removed:
@@ -195,11 +189,10 @@ async def play_playlist_endpoint(
     venue_id: int,
     playlist_id: int,
     db: AsyncSession = Depends(get_db),
-    current_admin: Venue = Depends(get_current_admin),
+    current_admin: Principal = Depends(get_current_principal),
 ) -> dict:
     """Agrega todas las canciones de una playlist a la cola actual."""
-    if current_admin.id != venue_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+    require_venue_access(current_admin, venue_id)
 
     songs = await get_playlist_songs(db, playlist_id)
     if not songs:

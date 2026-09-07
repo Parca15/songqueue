@@ -7,14 +7,14 @@ import pytest
 class TestAuth:
     """Suite de tests para autenticacion."""
 
-    async def test_login_success(self, client):
+    async def test_login_success(self, client, super_headers):
         """Test: Login exitoso retorna token JWT."""
-        # Crear venue primero
+        # Crear venue primero (solo super admin puede)
         await client.post("/api/v1/venues", json={
             "name": "Auth Test Bar",
             "admin_username": "admin_auth",
             "admin_password": "authpass123",
-        })
+        }, headers=super_headers)
 
         response = await client.post("/api/v1/auth/login", json={
             "username": "admin_auth",
@@ -26,13 +26,13 @@ class TestAuth:
         assert data["token_type"] == "bearer"
         assert data["venue_name"] == "Auth Test Bar"
 
-    async def test_login_wrong_password(self, client):
+    async def test_login_wrong_password(self, client, super_headers):
         """Test: Login con password incorrecto."""
         await client.post("/api/v1/venues", json={
             "name": "Auth Fail Bar",
             "admin_username": "admin_fail",
             "admin_password": "correctpass",
-        })
+        }, headers=super_headers)
 
         response = await client.post("/api/v1/auth/login", json={
             "username": "admin_fail",
@@ -62,21 +62,21 @@ class TestAuth:
         )
         assert response.status_code == 401
 
-    async def test_admin_can_only_modify_own_venue(self, client):
+    async def test_admin_can_only_modify_own_venue(self, client, super_headers):
         """Test: Admin solo puede modificar su propio local."""
-        # Crear dos venues
+        # Crear dos venues (como super)
         v1 = await client.post("/api/v1/venues", json={
             "name": "Venue One",
             "admin_username": "admin_one",
             "admin_password": "pass123",
-        })
+        }, headers=super_headers)
         v1_id = v1.json()["id"]
 
         v2 = await client.post("/api/v1/venues", json={
             "name": "Venue Two",
             "admin_username": "admin_two",
             "admin_password": "pass123",
-        })
+        }, headers=super_headers)
         v2_id = v2.json()["id"]
 
         # Login como admin_one
