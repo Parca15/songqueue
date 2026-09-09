@@ -1,9 +1,0 @@
-SHOW GRANTS FOR CURRENT_USER();
-
-CREATE USER IF NOT EXISTS '2hqbYoFibz61NUV.songqueue'@'%' IDENTIFIED BY 'SongQueue2026!';
-
-GRANT ALL PRIVILEGES ON songqueue.* TO '2hqbYoFibz61NUV.songqueue'@'%';
-
-FLUSH PRIVILEGES;
-
-SHOW GRANTS FOR '2hqbYoFibz61NUV.songqueue'@'%';
