@@ -57,3 +57,6 @@ alembic/__pycache__/
 alembic/versions/__pycache__/
 .coverage
 coverage.xml
+
+# IDE local
+.opencode/
