@@ -30,14 +30,16 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestion del ciclo de vida de la app."""
-    # En modo debug, intentar crear tablas (no falla si BD no disponible)
-    if settings.debug:
-        try:
-            await init_db()
-            logger.info("Tablas verificadas/creadas")
-        except Exception as e:
-            logger.warning(f"init_db() omitido: {e}")
-            logger.warning("Ejecuta: docker-compose up -d db")
+    # Intentar crear tablas si no existen (idempotente, no falla si ya existen)
+    try:
+        await init_db()
+        logger.info("Tablas verificadas/creadas")
+    except Exception as e:
+        logger.warning(f"init_db() omitido: {e}")
+        logger.warning(
+            "Si las migraciones fallaron, ejecuta: GRANT ALL PRIVILEGES ON songqueue.* TO 'usuario'@'%'"
+        )
+
     # Bootstrap del super admin (solo si está configurado y no existe ninguno)
     if settings.super_admin_username and settings.super_admin_password:
         try:
@@ -49,8 +51,13 @@ async def lifespan(app: FastAPI):
                 )
                 if created:
                     logger.info(f"Super admin '{settings.super_admin_username}' creado")
+                else:
+                    logger.info("Super admin ya existe, omitiendo creación")
         except Exception as e:
             logger.warning(f"ensure_superadmin() omitido: {e}")
+            logger.warning(
+                "Verifica que la tabla 'users' exista y tenga permisos de INSERT"
+            )
     else:
         logger.info(
             "Sin SUPER_ADMIN_USERNAME/PASSWORD: login de super admin no disponible"
