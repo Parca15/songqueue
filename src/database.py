@@ -10,6 +10,11 @@ from src.config import get_settings
 
 settings = get_settings()
 
+# TiDB Cloud Serverless requiere SSL; detectar por hostname en la URL.
+_connect_args: dict = {}
+if "tidbcloud.com" in settings.database_url:
+    _connect_args = {"ssl": True}
+
 # Motor async con pool de conexiones
 # NOTA: pool_pre_ping desactivado por incompatibilidad con aiomysql 0.2.0
 engine = create_async_engine(
@@ -17,6 +22,7 @@ engine = create_async_engine(
     echo=settings.debug,
     pool_size=10,
     max_overflow=20,
+    connect_args=_connect_args,
 )
 
 # Factory de sesiones async

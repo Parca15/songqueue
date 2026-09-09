@@ -2,6 +2,7 @@
 Configuración de Alembic para migraciones de base de datos.
 Soporta modo async con aiomysql.
 """
+
 import asyncio
 from logging.config import fileConfig
 
@@ -10,11 +11,11 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from src.config import get_settings
 
 # Importar modelos para autogenerate
 from src.database import Base
 from src.models import *  # noqa: F401,F403
-from src.config import get_settings
 
 settings = get_settings()
 
@@ -76,10 +77,16 @@ async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = settings.async_database_url
 
+    # TiDB Cloud Serverless requiere SSL
+    connect_args = {}
+    if "tidbcloud.com" in settings.database_url:
+        connect_args = {"ssl": True}
+
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:
