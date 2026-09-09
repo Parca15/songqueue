@@ -1,0 +1,44 @@
+# ── Render Infrastructure as Code ──
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy: conectar repo en Render → detecta render.yaml automáticamente.
+# Cada push a main trigger-deploy automático.
+#
+# Base de datos: TiDB Cloud Serverless (gratis, MySQL-compatible).
+#   1. Crear clúster en tidbcloud.com
+#   2. Copiar connection string
+#   3. Pegarlo como DATABASE_URL en env vars de Render
+
+services:
+  - type: web
+    name: songqueue
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Base de datos (copiar de TiDB Cloud → Connect → General)
+      # Formato: mysql+aiomysql://user:pass@host:4000/db
+      - key: DATABASE_URL
+        sync: false
+
+      # Seguridad (generado automáticamente por Render)
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Super admin (se crea solo si no existe ninguno)
+      - key: SUPER_ADMIN_USERNAME
+        value: superadmin
+      - key: SUPER_ADMIN_PASSWORD
+        generateValue: true
+
+      # URL pública para QR codes
+      - key: SERVER_BASE_URL
+        sync: false
+
+      # App
+      - key: DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: SongQueue

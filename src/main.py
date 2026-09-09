@@ -3,13 +3,12 @@ Entry point de la aplicacion FastAPI.
 """
 
 import logging
-import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,9 +115,60 @@ app.include_router(queue.router, prefix="/api/v1/queue", tags=["queue"])
 app.include_router(playlist.router, prefix="/api/v1/playlists", tags=["playlists"])
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
-# ── Static files (frontend) ──
-if os.path.isdir("frontend"):
-    app.mount("/static", StaticFiles(directory="frontend"), name="static")
+# ── Frontend (archivos estáticos servidos por FastAPI) ──
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+
+
+def _serve_frontend(filename: str):
+    """Sirve un archivo del frontend. Retorna 404 si no existe."""
+    filepath = FRONTEND_DIR / filename
+    if filepath.is_file():
+        return FileResponse(filepath)
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    """Sirve admin.html (raíz) o index.html (si ?venue= está presente)."""
+    venue = request.query_params.get("venue")
+    filename = "index.html" if venue else "admin.html"
+    return _serve_frontend(filename)
+
+
+@app.get("/admin.html", response_class=HTMLResponse)
+async def admin_page():
+    return _serve_frontend("admin.html")
+
+
+@app.get("/index.html", response_class=HTMLResponse)
+async def index_page():
+    return _serve_frontend("index.html")
+
+
+@app.get("/player.html", response_class=HTMLResponse)
+async def player_page():
+    return _serve_frontend("player.html")
+
+
+@app.get("/join.html", response_class=HTMLResponse)
+async def join_page():
+    return _serve_frontend("join.html")
+
+
+@app.get("/join/{token}", response_class=HTMLResponse)
+async def join_token(token: str):
+    """Ruta legacy: /join/<qr_token> sirve join.html."""
+    return _serve_frontend("join.html")
+
+
+@app.get("/design-system.css")
+async def design_system_css():
+    return _serve_frontend("design-system.css")
+
+
+@app.get("/motion.js")
+async def motion_js():
+    return _serve_frontend("motion.js")
 
 
 @app.get("/health", tags=["health"])
@@ -133,6 +183,7 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
     return {"status": "ready", "app": settings.app_name, "version": settings.version}
 
 
-@app.get("/")
-async def root():
+@app.get("/api", tags=["info"])
+async def api_root():
+    """Info de la API en JSON."""
     return {"message": "SongQueue API", "docs": "/docs", "version": settings.version}

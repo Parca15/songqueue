@@ -13,3 +13,4 @@ README.md
 Makefile
 deploy/
 docker-compose.yml
+render.yaml

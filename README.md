@@ -3,6 +3,7 @@
 ![CI](https://github.com/Parca15/songqueue/actions/workflows/ci.yml/badge.svg)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 ![Coverage 51%+](https://img.shields.io/badge/coverage-51%25%2B-green)
+[![Deploy on Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Parca15/songqueue)
 
 Sistema de cola de canciones multi-local: los clientes escanean un QR, registran su nombre y piden canciones de YouTube; el admin aprueba desde una lista de espera y el reproductor las suena en un TV. Todo en tiempo real por WebSockets. Hay un super admin con acceso total a las cuentas.
 
@@ -109,6 +110,33 @@ docker compose up -d --build
 CLOUDFLARE_TUNNEL_TOKEN=xxx SERVER_BASE_URL=https://tu-dominio \
   docker compose --profile tunnel up -d --build
 ```
+
+### Deploy en Render (producción)
+
+```bash
+# 1. Crear cuenta en https://render.com (conectar GitHub)
+
+# 2. Crear base de datos MySQL en TiDB Cloud (gratis)
+#    → https://tidbcloud.com → Create Cluster → Serverless
+#    → Copiar connection string
+
+# 3. En Render → New + → Web Service → Conectar repo
+#    → Configurar env vars:
+#       DATABASE_URL=mysql+aiomysql://user:pass@host:4000/songqueue
+#       SECRET_KEY=<python3 -c "import secrets; print(secrets.token_urlsafe(32))">
+#       SUPER_ADMIN_USERNAME=superadmin
+#       SUPER_ADMIN_PASSWORD=<contraseña_segura>
+#       SERVER_BASE_URL=https://songqueue.onrender.com
+
+# 4. Auto-deploy: cada push a main despliega automáticamente
+```
+
+| Servicio | URL |
+|----------|-----|
+| Admin | `https://songqueue.onrender.com/admin.html` |
+| Cliente | `https://songqueue.onrender.com/?venue=1` |
+| Reproductor | `https://songqueue.onrender.com/player.html?venue=1` |
+| Salud | `https://songqueue.onrender.com/health` |
 
 ### URLs (vía nginx en :80)
 

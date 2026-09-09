@@ -76,6 +76,14 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator("database_url")
+    @classmethod
+    def _ensure_async_driver(cls, v: str) -> str:
+        """Convierte mysql:// a mysql+aiomysql:// si el driver async falta."""
+        if v.startswith("mysql://"):
+            return "mysql+aiomysql://" + v[len("mysql://") :]
+        return v
+
     @property
     def async_database_url(self) -> str:
         """Retorna la URL de la base de datos para uso async."""

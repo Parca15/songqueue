@@ -31,6 +31,7 @@ COPY src/ ./src/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 COPY entrypoint.sh .
+COPY frontend/ ./frontend/
 
 RUN chmod +x entrypoint.sh \
     && chown -R appuser:appuser /app
